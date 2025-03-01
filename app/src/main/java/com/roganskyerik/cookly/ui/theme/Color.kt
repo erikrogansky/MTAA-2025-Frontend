@@ -8,19 +8,31 @@ import androidx.compose.ui.graphics.Color
 data class CooklyColors(
     val Orange100: Color,
     val FontColor: Color,
-    val FontColorReverse: Color,
+    val FontDark: Color,
+
+    val LinkColor: Color,
+
+    val DarkOrange: Color,
 )
 
 // Light theme colors
 val LightCooklyColors = CooklyColors(
     Orange100 = Color(0xFFFFB200),
-    FontColor = Color(0xFF000000),
-    FontColorReverse = Color(0xFFFFFFFF),
+    FontColor = Color(0xFF481E00),
+    FontDark = Color(0xFF481E00),
+
+    LinkColor = Color(0xFFBB6002),
+
+    DarkOrange = Color(0xFFE28900),
 )
 
 // Dark theme colors
 val DarkCooklyColors = CooklyColors(
     Orange100 = Color(0xFFFFB200),
     FontColor = Color(0xFFFFFFFF),
-    FontColorReverse = Color(0xFF000000),
+    FontDark = Color(0xFF481E00),
+
+    LinkColor = Color(0xFFBB6002),
+
+    DarkOrange = Color(0xFFE28900),
 )

@@ -1,59 +1,150 @@
 package com.roganskyerik.cookly.ui
 
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.roganskyerik.cookly.R
 import com.roganskyerik.cookly.ui.theme.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+
+import androidx.compose.ui.text.withStyle
+import androidx.compose.material3.Text
+
 
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
     val colors = LocalCooklyColors.current
 
-    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent)
+                )
+            )
+        ) {
+        Image(
+            painter = painterResource(
+                id = if (isSystemInDarkTheme()) R.drawable.login_background_dark
+                else R.drawable.login_background_light
+            ),
+            contentDescription = "Login Background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
+            .padding(start = 36.dp, top = 40.dp, bottom = 10.dp, end = 36.dp),
+        verticalArrangement = Arrangement.Top,
     ) {
-        Text(text = "Login", fontSize = 24.sp, color = Color.Black)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Image(
+            painter = painterResource(id = R.drawable.logo_vertical),
+            contentDescription = "Cookly logo",
+            modifier = Modifier
+                .size(120.dp)
+                .align(Alignment.CenterHorizontally),
+            contentScale = ContentScale.Fit
+        )
 
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username") },
+        Spacer(modifier = Modifier.height(36.dp))
+
+        Text(
+            text = "Hi, welcome back!",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Black,
+                fontSize = 28.sp
+            ),
+            color = colors.FontColor
+        )
+
+        Text(
+            text = "Sign in to your account to continue",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Normal,
+                fontSize = 16.sp
+            ),
+            color = colors.FontColor
+        )
+
+        Spacer(modifier = Modifier.height(30.dp))
+
+        Text(
+            text = "Email",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            ),
+            color = colors.FontColor,
+            modifier = Modifier.padding(9.dp, 0.dp)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        CustomOutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = "example@email.com",
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(50.dp)
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        OutlinedTextField(
+        Text(
+            text = "Password",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            ),
+            color = colors.FontColor,
+            modifier = Modifier.padding(9.dp, 0.dp)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        CustomOutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = "•••••••••••",
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(50.dp)
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(26.dp))
 
         if (errorMessage != null) {
             Text(text = errorMessage!!, color = Color.Red, fontSize = 14.sp)
@@ -61,7 +152,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
 
         Button(
             onClick = {
-                if (username == "admin" && password == "password") {
+                if (email == "admin" && password == "password") {
                     onLoginSuccess()
                 } else {
                     errorMessage = "Invalid credentials"
@@ -70,7 +161,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = colors.Orange100, // Background color
-                contentColor = colors.FontColorReverse // Text color
+                contentColor = Color.White // Text color
             ),
             contentPadding = PaddingValues(vertical = 12.dp)
         ) {
@@ -83,8 +174,189 @@ fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
                 )
             )
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = "Forgot password?",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                textDecoration = TextDecoration.Underline,
+            ),
+            color = colors.LinkColor,
+            modifier = Modifier.padding(9.dp, 0.dp)
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp),
+                color = colors.DarkOrange
+            )
+
+            Text(
+                text = "or",
+                modifier = Modifier
+                    .padding(horizontal = 8.dp),
+                style = TextStyle(
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = colors.FontColor
+                )
+            )
+
+            HorizontalDivider(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp),
+                color = colors.DarkOrange
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = {
+                //
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation = 1.dp, shape = RoundedCornerShape(50.dp)),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White, // Background color
+                contentColor = colors.FontDark // Text color
+            ),
+            contentPadding = PaddingValues(vertical = 12.dp),
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.google_logo),
+                contentDescription = "Google icon",
+                modifier = Modifier.size(20.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Text(
+                text = "Sign in with Google",
+                style = TextStyle(
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                //
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation = 1.dp, shape = RoundedCornerShape(50.dp)),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White, // Background color
+                contentColor = colors.FontDark // Text color
+            ),
+            contentPadding = PaddingValues(vertical = 12.dp),
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.facebook_logo),
+                contentDescription = "Facebook icon",
+                modifier = Modifier.size(20.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Text(
+                text = "Sign in with Facebook",
+                style = TextStyle(
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp
+                )
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(bottom = 16.dp), // Adjust padding if needed
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text(
+                buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = colors.FontColor, fontSize = 16.sp)) {
+                        append("Don't have an account yet? ")
+                    }
+                    withStyle(style = SpanStyle(color = colors.LinkColor, textDecoration = TextDecoration.Underline, fontSize = 16.sp)) {
+                        append("Register for free!")
+                    }
+                }
+            )
+        }
+
+    }
     }
 }
+
+
+
+@Composable
+fun CustomOutlinedTextField(
+    modifier: Modifier = Modifier,
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    singleLine: Boolean = true,
+    shape: Shape = RoundedCornerShape(50.dp),
+    textStyle: TextStyle = LocalTextStyle.current,
+    borderColor: Color = MaterialTheme.colorScheme.primary,
+    labelColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Box(modifier = modifier) {
+        var isFocused by remember { mutableStateOf(false) }
+
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface),
+            visualTransformation = visualTransformation,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { isFocused = it.isFocused }
+        ) { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .border(1.dp, if (isFocused) borderColor else Color.Gray, shape)
+                    .padding(horizontal = 16.dp, vertical = 12.dp) // Adjust padding here
+            ) {
+                if (value.isEmpty()) {
+                    Text(text = label, color = labelColor)
+                }
+                innerTextField()
+            }
+        }
+    }
+}
+
+
+
 
 @Preview(showBackground = true)
 @Composable
