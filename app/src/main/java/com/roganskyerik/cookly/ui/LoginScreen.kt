@@ -3,19 +3,16 @@ package com.roganskyerik.cookly.ui
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -29,10 +26,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 
 import androidx.compose.ui.text.withStyle
 import androidx.compose.material3.Text
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
+fun LoginScreen(navController: NavController = rememberNavController()) {
     val colors = LocalCooklyColors.current
 
     var email by remember { mutableStateOf("") }
@@ -68,9 +67,9 @@ fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
             painter = painterResource(id = R.drawable.logo_vertical),
             contentDescription = "Cookly logo",
             modifier = Modifier
-                .size(120.dp)
+                .width(140.dp)
                 .align(Alignment.CenterHorizontally),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.FillWidth
         )
 
         Spacer(modifier = Modifier.height(36.dp))
@@ -144,16 +143,16 @@ fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
             shape = RoundedCornerShape(50.dp)
         )
 
-        Spacer(modifier = Modifier.height(26.dp))
-
         if (errorMessage != null) {
-            Text(text = errorMessage!!, color = Color.Red, fontSize = 14.sp)
+            Text(text = errorMessage!!, color = Color.Red, fontSize = 14.sp, modifier = Modifier.padding(9.dp, 0.dp))
         }
+
+        Spacer(modifier = Modifier.height(26.dp))
 
         Button(
             onClick = {
                 if (email == "admin" && password == "password") {
-                    onLoginSuccess()
+                    //onLoginSuccess()
                 } else {
                     errorMessage = "Invalid credentials"
                 }
@@ -294,17 +293,29 @@ fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .padding(bottom = 16.dp), // Adjust padding if needed
-            verticalArrangement = Arrangement.Bottom
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.Bottom,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 buildAnnotatedString {
                     withStyle(style = SpanStyle(color = colors.FontColor, fontSize = 16.sp)) {
                         append("Don't have an account yet? ")
                     }
+                    val startIndex = length
                     withStyle(style = SpanStyle(color = colors.LinkColor, textDecoration = TextDecoration.Underline, fontSize = 16.sp)) {
                         append("Register for free!")
                     }
+                    addStringAnnotation(
+                        tag = "Register",
+                        annotation = "register",
+                        start = startIndex,
+                        end = length
+                    )
+                },
+                modifier = Modifier.clickable {
+                    navController.navigate("register")
                 }
             )
         }
@@ -314,53 +325,9 @@ fun LoginScreen(onLoginSuccess: () -> Unit = {}) {
 }
 
 
-
-@Composable
-fun CustomOutlinedTextField(
-    modifier: Modifier = Modifier,
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    singleLine: Boolean = true,
-    shape: Shape = RoundedCornerShape(50.dp),
-    textStyle: TextStyle = LocalTextStyle.current,
-    borderColor: Color = MaterialTheme.colorScheme.primary,
-    labelColor: Color = MaterialTheme.colorScheme.onSurface
-) {
-    Box(modifier = modifier) {
-        var isFocused by remember { mutableStateOf(false) }
-
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = singleLine,
-            textStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface),
-            visualTransformation = visualTransformation,
-            modifier = Modifier
-                .fillMaxWidth()
-                .onFocusChanged { isFocused = it.isFocused }
-        ) { innerTextField ->
-            Box(
-                modifier = Modifier
-                    .border(1.dp, if (isFocused) borderColor else Color.Gray, shape)
-                    .padding(horizontal = 16.dp, vertical = 12.dp) // Adjust padding here
-            ) {
-                if (value.isEmpty()) {
-                    Text(text = label, color = labelColor)
-                }
-                innerTextField()
-            }
-        }
-    }
-}
-
-
-
-
 @Preview(showBackground = true)
 @Composable
-fun PreviewLight() {
+fun PreviewLightLogin() {
     CooklyTheme(darkTheme = false) {
         LoginScreen()
     }
@@ -368,7 +335,7 @@ fun PreviewLight() {
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewDark() {
+fun PreviewDarkLogin() {
     CooklyTheme(darkTheme = true) {
         LoginScreen()
     }
