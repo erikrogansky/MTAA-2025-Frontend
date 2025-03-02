@@ -26,13 +26,22 @@ import androidx.compose.ui.text.buildAnnotatedString
 
 import androidx.compose.ui.text.withStyle
 import androidx.compose.material3.Text
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.roganskyerik.cookly.MainViewModel
+import com.roganskyerik.cookly.MainViewModelFactory
+import com.roganskyerik.cookly.repository.ApiRepository
+import com.roganskyerik.cookly.utils.TokenManager
 
 
 @Composable
 fun RegistrationScreen(navController: NavController = rememberNavController()) {
     val colors = LocalCooklyColors.current
+
+    val context = LocalContext.current
+    val viewModel: MainViewModel = viewModel(factory = MainViewModelFactory(ApiRepository(context)))
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -188,11 +197,16 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
 
             Button(
                 onClick = {
-                if (email == "admin" && password == "password") {
-                    //onLoginSuccess()
-                } else {
-                    errorMessage = "Invalid credentials"
-                }
+                    viewModel.register(name, email, password) { response, error ->
+                        if (response != null) {
+                            TokenManager.saveTokens(context, response.accessToken, response.refreshToken)  // ✅ Save tokens securely
+                            navController.navigate("home") {
+                                popUpTo("register") { inclusive = true }
+                            }
+                        } else {
+                            errorMessage = error
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
