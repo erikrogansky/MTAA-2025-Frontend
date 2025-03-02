@@ -33,6 +33,7 @@ fun HomeScreen(navController: NavController) {
 
                 viewModel.logout(refreshToken) { response, error ->
                     if (response != null) {
+                        TokenManager.clearTokens(context)
                         navController.navigate("login") {
                             popUpTo("home") { inclusive = true }
                         }

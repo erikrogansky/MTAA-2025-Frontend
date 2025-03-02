@@ -32,6 +32,12 @@ object TokenManager {
             .apply()
     }
 
+    fun saveAccessToken(context: Context, accessToken: String) {
+        getPreferences(context).edit()
+            .putString(KEY_ACCESS_TOKEN, accessToken)
+            .apply()
+    }
+
     fun getAccessToken(context: Context): String? {
         return getPreferences(context).getString(KEY_ACCESS_TOKEN, null)
     }
@@ -40,7 +46,7 @@ object TokenManager {
         return getPreferences(context).getString(KEY_REFRESH_TOKEN, null)
     }
 
-//    fun clearTokens(context: Context) {
-//        getPreferences(context).edit().clear().apply()
-//    }
+    fun clearTokens(context: Context) {
+        getPreferences(context).edit().clear().apply()
+    }
 }

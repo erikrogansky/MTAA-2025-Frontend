@@ -121,7 +121,10 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
 
             CustomOutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = {
+                    name = it
+                    errorMessage = null
+                },
                 label = "John Doe",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -149,7 +152,10 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
 
             CustomOutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    errorMessage = null
+                },
                 label = "example@email.com",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -177,7 +183,10 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
 
             CustomOutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    errorMessage = null
+                },
                 label = "•••••••••••",
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
@@ -186,7 +195,7 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
                 borderColor = colors.Orange100,
                 focusedBorderColor = colors.DarkOrange,
                 isError = errorMessage != null,
-                errorColor = colors.Error
+                errorColor = colors.Error,
             )
 
             if (errorMessage != null) {
@@ -197,6 +206,7 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
 
             Button(
                 onClick = {
+                    errorMessage = null
                     viewModel.register(name, email, password) { response, error ->
                         if (response != null) {
                             TokenManager.saveTokens(context, response.accessToken, response.refreshToken)  // ✅ Save tokens securely

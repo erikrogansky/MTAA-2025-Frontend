@@ -121,7 +121,10 @@ fun LoginScreen(navController: NavController = rememberNavController()) {
 
         CustomOutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                errorMessage = null
+            },
             label = "example@email.com",
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -149,7 +152,10 @@ fun LoginScreen(navController: NavController = rememberNavController()) {
 
         CustomOutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                errorMessage = null
+            },
             label = "•••••••••••",
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
@@ -170,6 +176,7 @@ fun LoginScreen(navController: NavController = rememberNavController()) {
 
         Button(
             onClick = {
+                errorMessage = null
                 viewModel.login(email, password) { response, error ->
                     if (response != null) {
                         TokenManager.saveTokens(context, response.accessToken, response.refreshToken)  // ✅ Save tokens securely

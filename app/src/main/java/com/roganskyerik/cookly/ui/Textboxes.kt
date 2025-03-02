@@ -43,7 +43,9 @@ fun CustomOutlinedTextField(
     Box(modifier = modifier) {
         BasicTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { newValue ->
+                onValueChange(newValue)
+            },
             singleLine = singleLine,
             textStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface),
             visualTransformation = visualTransformation,

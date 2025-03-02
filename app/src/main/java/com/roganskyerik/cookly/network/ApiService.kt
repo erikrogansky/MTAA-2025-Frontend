@@ -23,6 +23,9 @@ data class RegisterResponse(val accessToken: String, val refreshToken: String)
 
 data class LogoutRequest(val refreshToken: String, val deviceId: String)
 
+data class RefreshTokenRequest(val refreshToken: String, val deviceId: String)
+data class RefreshTokenResponse(val accessToken: String)
+
 interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
@@ -33,6 +36,6 @@ interface ApiService {
     @POST("auth/logout")
     suspend fun logout(@Body request: LogoutRequest)
 
-    @POST("auth/refresh")
-    suspend fun refreshToken(@Body refreshToken: String): String
+    @POST("auth/refresh-token")
+    suspend fun refreshToken(@Body request: RefreshTokenRequest): RefreshTokenResponse
 }
