@@ -59,7 +59,7 @@ fun CustomOutlinedTextField(
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 if (value.isEmpty()) {
-                    Text(text = label, color = labelColor)
+                    Text(text = label, color = labelColor.copy(alpha = 0.5f))
                 }
                 innerTextField()
             }

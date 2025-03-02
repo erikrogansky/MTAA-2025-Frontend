@@ -156,7 +156,7 @@ fun LoginScreen(navController: NavController = rememberNavController()) {
                 password = it
                 errorMessage = null
             },
-            label = "•••••••••••",
+            label = "Your password",
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
