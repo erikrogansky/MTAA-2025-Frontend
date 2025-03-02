@@ -199,6 +199,7 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
             )
 
             if (errorMessage != null) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(text = errorMessage!!, color = Color.Red, fontSize = 14.sp)
             }
 
