@@ -27,11 +27,20 @@ fun CustomOutlinedTextField(
     shape: Shape = RoundedCornerShape(50.dp),
     textStyle: TextStyle = LocalTextStyle.current,
     borderColor: Color = MaterialTheme.colorScheme.primary,
-    labelColor: Color = MaterialTheme.colorScheme.onSurface
+    focusedBorderColor: Color = MaterialTheme.colorScheme.secondary,
+    labelColor: Color = MaterialTheme.colorScheme.onSurface,
+    isError: Boolean = false,
+    errorColor: Color = Color.Red // Define error color
 ) {
-    Box(modifier = modifier) {
-        var isFocused by remember { mutableStateOf(false) }
+    var isFocused by remember { mutableStateOf(false) }
 
+    val currentBorderColor = when {
+        isError -> errorColor
+        isFocused -> focusedBorderColor
+        else -> borderColor
+    }
+
+    Box(modifier = modifier) {
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -44,8 +53,8 @@ fun CustomOutlinedTextField(
         ) { innerTextField ->
             Box(
                 modifier = Modifier
-                    .border(1.dp, if (isFocused) borderColor else Color.Gray, shape)
-                    .padding(horizontal = 16.dp, vertical = 12.dp) // Adjust padding here
+                    .border(1.dp, currentBorderColor, shape)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 if (value.isEmpty()) {
                     Text(text = label, color = labelColor)

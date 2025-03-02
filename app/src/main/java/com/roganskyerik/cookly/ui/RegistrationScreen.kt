@@ -116,7 +116,11 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
                 label = "John Doe",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(50.dp)
+                shape = RoundedCornerShape(50.dp),
+                borderColor = colors.Orange100,
+                focusedBorderColor = colors.DarkOrange,
+                isError = errorMessage != null,
+                errorColor = colors.Error
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -140,7 +144,11 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
                 label = "example@email.com",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(50.dp)
+                shape = RoundedCornerShape(50.dp),
+                borderColor = colors.Orange100,
+                focusedBorderColor = colors.DarkOrange,
+                isError = errorMessage != null,
+                errorColor = colors.Error
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -165,7 +173,11 @@ fun RegistrationScreen(navController: NavController = rememberNavController()) {
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(50.dp)
+                shape = RoundedCornerShape(50.dp),
+                borderColor = colors.Orange100,
+                focusedBorderColor = colors.DarkOrange,
+                isError = errorMessage != null,
+                errorColor = colors.Error
             )
 
             if (errorMessage != null) {

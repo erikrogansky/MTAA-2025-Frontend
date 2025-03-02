@@ -13,6 +13,8 @@ data class CooklyColors(
     val LinkColor: Color,
 
     val DarkOrange: Color,
+
+    val Error: Color,
 )
 
 // Light theme colors
@@ -24,6 +26,8 @@ val LightCooklyColors = CooklyColors(
     LinkColor = Color(0xFFBB6002),
 
     DarkOrange = Color(0xFFE28900),
+
+    Error = Color(0xFFD90000),
 )
 
 // Dark theme colors
@@ -35,4 +39,6 @@ val DarkCooklyColors = CooklyColors(
     LinkColor = Color(0xFFBB6002),
 
     DarkOrange = Color(0xFFE28900),
+
+    Error = Color(0xFFD90000),
 )
