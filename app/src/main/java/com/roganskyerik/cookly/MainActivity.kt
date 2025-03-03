@@ -5,15 +5,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import com.roganskyerik.cookly.ui.theme.CooklyTheme
 
 import com.roganskyerik.cookly.ui.LoginScreen
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.roganskyerik.cookly.network.refreshAccessToken
+import com.roganskyerik.cookly.ui.AccountScreen
+import com.roganskyerik.cookly.ui.BottomNavigationBar
+import com.roganskyerik.cookly.ui.CreateScreen
+import com.roganskyerik.cookly.ui.DiscoverScreen
 import com.roganskyerik.cookly.ui.HomeScreen
 import com.roganskyerik.cookly.ui.RegistrationScreen
 import com.roganskyerik.cookly.ui.SplashScreen
@@ -67,10 +76,33 @@ fun AppNavigation(context: Context) {
         }
     }
 
-    NavHost(navController = navController, startDestination = "splash") {
-        composable("splash") { SplashScreen() }
-        composable("login") { LoginScreen(navController) }
-        composable("register") { RegistrationScreen(navController) }
-        composable("home") { HomeScreen(navController) }
+    val bottomNavScreens = listOf("home", "discover", "create", "account")
+
+    Scaffold(
+        bottomBar = {
+            if (bottomNavScreens.contains(currentRoute(navController))) {
+                BottomNavigationBar(navController)
+            }
+        }
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = "splash",
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            composable("splash") { SplashScreen() }
+            composable("login") { LoginScreen(navController) }
+            composable("register") { RegistrationScreen(navController) }
+            composable("home") { HomeScreen(navController) }
+            composable("discover") { DiscoverScreen(navController) }
+            composable("create") { CreateScreen(navController) }
+            composable("account") { AccountScreen(navController) }
+        }
     }
+}
+
+@Composable
+fun currentRoute(navController: NavController): String? {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    return navBackStackEntry?.destination?.route
 }
