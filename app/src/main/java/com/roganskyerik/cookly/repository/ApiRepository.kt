@@ -1,13 +1,7 @@
 package com.roganskyerik.cookly.repository
 
 import android.content.Context
-import com.roganskyerik.cookly.network.ApiClient
-import com.roganskyerik.cookly.network.ApiService
-import com.roganskyerik.cookly.network.LoginRequest
-import com.roganskyerik.cookly.network.LoginResponse
-import com.roganskyerik.cookly.network.LogoutRequest
-import com.roganskyerik.cookly.network.RegisterRequest
-import com.roganskyerik.cookly.network.RegisterResponse
+import com.roganskyerik.cookly.network.*
 import com.roganskyerik.cookly.utils.getDeviceId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -50,6 +44,20 @@ class ApiRepository(context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 apiService.logout(LogoutRequest(refreshToken, deviceId))
+                Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun logoutAll(refreshToken: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.logoutAll(LogoutAllRequest(refreshToken))
                 Result.success(Unit)
             } catch (e: HttpException) {
                 val errorMessage = extractErrorMessage(e)

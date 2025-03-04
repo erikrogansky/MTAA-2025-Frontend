@@ -15,6 +15,13 @@ data class CooklyColors(
     val DarkOrange: Color,
 
     val Error: Color,
+
+    val Background: Color,
+
+    val ModalBackground: Color,
+
+    val PureColor: Color,
+    val PureOpositeColor: Color,
 )
 
 // Light theme colors
@@ -28,6 +35,13 @@ val LightCooklyColors = CooklyColors(
     DarkOrange = Color(0xFFE28900),
 
     Error = Color(0xFFD90000),
+
+    Background = Color(0xFFFFFFFF),
+
+    ModalBackground = Color(0xFFFFFFFF),
+
+    PureColor = Color(0xFFFFFFFF),
+    PureOpositeColor = Color(0xFF000000),
 )
 
 // Dark theme colors
@@ -41,4 +55,11 @@ val DarkCooklyColors = CooklyColors(
     DarkOrange = Color(0xFFE28900),
 
     Error = Color(0xFFD90000),
+
+    Background = Color(0xFF000000),
+
+    ModalBackground = Color(0xFF313131),
+
+    PureColor = Color(0xFF000000),
+    PureOpositeColor = Color(0xFFFFFFFF),
 )

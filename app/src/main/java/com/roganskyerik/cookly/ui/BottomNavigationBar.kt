@@ -11,11 +11,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.roganskyerik.cookly.R
 import com.roganskyerik.cookly.currentRoute
 import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
+import com.roganskyerik.cookly.ui.theme.Nunito
 
 @Composable
 fun BottomNavigationBar(navController: NavController) {
@@ -34,12 +38,13 @@ fun BottomNavigationBar(navController: NavController) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
             .background(colors.DarkOrange)
-            .padding(top = 20.dp, bottom = 16.dp, start = 16.dp, end = 16.dp)
+            .padding(top = 12.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+            .navigationBarsPadding()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(70.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             items.forEach { item ->
@@ -84,10 +89,17 @@ fun BottomNavItemView(
             tint = if (isSelected) selectedColor else unselectedColor,
             modifier = Modifier.size(32.dp)
         )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
         Text(
             text = item.label,
             color = if (isSelected) selectedColor else unselectedColor,
-            style = MaterialTheme.typography.labelSmall
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Black,
+                fontSize = 14.sp
+            ),
         )
     }
 }

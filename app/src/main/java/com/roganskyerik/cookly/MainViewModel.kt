@@ -32,4 +32,12 @@ class MainViewModel(private val repository: ApiRepository) : ViewModel() {
             result.onFailure { error -> onResult(null, error.message) }
         }
     }
+
+    fun logoutAll(refreshToken: String, onResult: (Unit?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.logoutAll(refreshToken)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
 }
