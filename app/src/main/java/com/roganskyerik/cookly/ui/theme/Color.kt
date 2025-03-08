@@ -56,7 +56,7 @@ val DarkCooklyColors = CooklyColors(
 
     Error = Color(0xFFD90000),
 
-    Background = Color(0xFF000000),
+    Background = Color(0xFF15110B),
 
     ModalBackground = Color(0xFF313131),
 

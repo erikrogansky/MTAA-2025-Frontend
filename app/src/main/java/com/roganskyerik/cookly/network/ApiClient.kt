@@ -12,10 +12,8 @@ class TokenAuthenticator(private val context: Context) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request? {
         val newAccessToken = runBlocking { refreshAccessToken(context) } ?: return null
 
-        // Update TokenManager with the new access token
         TokenManager.saveAccessToken(context, newAccessToken)
 
-        // Retry the request with the new token
         return response.request.newBuilder()
             .header("Authorization", "Bearer $newAccessToken")
             .build()

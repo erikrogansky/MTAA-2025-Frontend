@@ -179,7 +179,8 @@ fun LoginScreen(navController: NavController = rememberNavController()) {
                 errorMessage = null
                 viewModel.login(email, password) { response, error ->
                     if (response != null) {
-                        TokenManager.saveTokens(context, response.accessToken, response.refreshToken)  // ✅ Save tokens securely
+                        TokenManager.saveTokens(context, response.accessToken, response.refreshToken)
+                        viewModel.startWebSocket(response.accessToken)
                         navController.navigate("home") {
                             popUpTo("login") { inclusive = true }
                         }

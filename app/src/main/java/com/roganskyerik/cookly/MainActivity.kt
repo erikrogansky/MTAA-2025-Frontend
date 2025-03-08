@@ -18,6 +18,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.ui.graphics.luminance
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import androidx.navigation.NavController
@@ -27,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.roganskyerik.cookly.network.refreshAccessToken
+import com.roganskyerik.cookly.repository.ApiRepository
 import com.roganskyerik.cookly.ui.AccountScreen
 import com.roganskyerik.cookly.ui.BottomNavigationBar
 import com.roganskyerik.cookly.ui.CreateScreen
@@ -37,8 +39,10 @@ import com.roganskyerik.cookly.ui.SplashScreen
 import com.roganskyerik.cookly.ui.modals.ModalManager
 import com.roganskyerik.cookly.ui.modals.ModalManagerViewModel
 import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
+import com.roganskyerik.cookly.utils.AppLifecycleObserver
 import com.roganskyerik.cookly.utils.TokenManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +54,8 @@ class MainActivity : ComponentActivity() {
                 AppNavigation(LocalContext.current)
             }
         }
+
+        ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver())
     }
 }
 
@@ -59,6 +65,7 @@ fun AppNavigation(context: Context) {
     val navController = rememberNavController()
 
     val modalManagerViewModel: ModalManagerViewModel = viewModel()
+    val viewModel: MainViewModel = viewModel(factory = MainViewModelFactory(ApiRepository(context)))
 
     var startDestination by remember { mutableStateOf("splash") }
     val modalType by modalManagerViewModel.modalType.collectAsState()
@@ -71,7 +78,7 @@ fun AppNavigation(context: Context) {
 
     SideEffect {
         systemUiController.setStatusBarColor(
-            color = colors.DarkOrange,
+            color = colors.Background,
             darkIcons = statusBarIconColor,
 
         )
@@ -81,6 +88,21 @@ fun AppNavigation(context: Context) {
         )
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.forceLogoutEvent.collectLatest {
+            TokenManager.clearTokens(context)
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val accessToken = TokenManager.getAccessToken(context)
+        if (accessToken != null) {
+            viewModel.startWebSocket(accessToken)
+        }
+    }
 
     LaunchedEffect(Unit) {
         val refreshToken = TokenManager.getRefreshToken(context)
@@ -99,6 +121,8 @@ fun AppNavigation(context: Context) {
         }
         if (startDestination == "login") {
             TokenManager.clearTokens(context)
+        } else {
+            // Connect to user's socket
         }
         navController.navigate(startDestination) {
             popUpTo("splash") { inclusive = true }
@@ -133,7 +157,6 @@ fun AppNavigation(context: Context) {
         ModalManager(modalType, modalManagerViewModel::dismissModal)
     }
 }
-
 
 
 @Composable
