@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "998142415021",
+    "project_id": "mtaa-95655",
+    "storage_bucket": "mtaa-95655.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998142415021:android:1a29dc8374181849a37624",
+        "android_client_info": {
+          "package_name": "com.roganskyerik.cookly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCu5YbAXZltwct9Q6SiIg9WkMYkdCVC3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

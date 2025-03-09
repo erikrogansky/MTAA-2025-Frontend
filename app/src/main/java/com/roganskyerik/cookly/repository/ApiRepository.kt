@@ -21,10 +21,10 @@ class ApiRepository @Inject constructor(
 ) {
     private val deviceId by lazy { getDeviceId(context) }
 
-    suspend fun login(email: String, password: String): Result<LoginResponse> {
+    suspend fun login(email: String, password: String, firebaseToken: String): Result<LoginResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.login(LoginRequest(email, password, deviceId))
+                val response = apiService.login(LoginRequest(email, password, firebaseToken, deviceId))
                 Result.success(response)
             } catch (e: HttpException) {
                 val errorMessage = extractErrorMessage(e)

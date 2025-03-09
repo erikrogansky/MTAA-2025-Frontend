@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.roganskyerik.cookly.network.LoginResponse
 import com.roganskyerik.cookly.network.RegisterResponse
+import com.roganskyerik.cookly.permissions.PreferencesManager
 import com.roganskyerik.cookly.repository.ApiRepository
 import com.roganskyerik.cookly.utils.TokenManager
 import com.roganskyerik.cookly.utils.WebSocketManager
@@ -12,7 +13,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,16 +29,19 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: ApiRepository,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
-    private val _forceLogout = MutableStateFlow(false)  // Use StateFlow
+
+    // Authentication methods
+    private val _forceLogout = MutableStateFlow(false)
     val forceLogout: StateFlow<Boolean> = _forceLogout
 
     fun triggerForceLogout() {
         viewModelScope.launch {
-            _forceLogout.emit(false) // Reset first
-            delay(50) // Small delay to allow UI to recognize the state change
-            _forceLogout.emit(true) // Now trigger logout
+            _forceLogout.emit(false)
+            delay(50)
+            _forceLogout.emit(true)
         }
     }
 
@@ -46,9 +52,9 @@ class MainViewModel @Inject constructor(
     }
 
 
-    fun login(email: String, password: String, onResult: (LoginResponse?, String?) -> Unit) {
+    fun login(email: String, password: String, firebaseToken: String, onResult: (LoginResponse?, String?) -> Unit) {
         viewModelScope.launch {
-            val result = repository.login(email, password)
+            val result = repository.login(email, password, firebaseToken)
             result.onSuccess { response -> onResult(response, null) }
             result.onFailure { error -> onResult(null, error.message) }
         }
@@ -77,6 +83,7 @@ class MainViewModel @Inject constructor(
             result.onFailure { error -> onResult(null, error.message) }
         }
     }
+
 
     // Socket implementation
     private val webSocketListener = object : WebSocketListener() {
@@ -108,6 +115,8 @@ class MainViewModel @Inject constructor(
                         Log.d("ViewModel", "Inside coroutine - Executing toggleForceLogout()")
                         triggerForceLogout()
                     }
+
+                    WebSocketManager.closeWebSocket()
                 }
             }
         }
@@ -141,10 +150,10 @@ class MainViewModel @Inject constructor(
 
     override fun onCleared() {
         // Do not close the WebSocket here, as it should be kept open until the user logs out
-        Log.d("ViewModel", "ViewModel cleared")
     }
 
 
+    // Token management
     fun saveTokens(accessToken: String, refreshToken: String) {
         tokenManager.saveTokens(accessToken, refreshToken)
     }
@@ -168,6 +177,49 @@ class MainViewModel @Inject constructor(
     suspend fun refreshToken(): String? {
         return withContext(Dispatchers.IO) {
             tokenManager.refreshAccessToken()
+        }
+    }
+
+
+
+    // Preferences
+    val isNotificationsEnabled = preferencesManager.isNotificationsEnabled.stateIn(
+        viewModelScope, SharingStarted.Lazily, false
+    )
+
+    val isCameraEnabled = preferencesManager.isCameraEnabled.stateIn(
+        viewModelScope, SharingStarted.Lazily, false
+    )
+
+    val isFileManagerEnabled = preferencesManager.isFileManagerEnabled.stateIn(
+        viewModelScope, SharingStarted.Lazily, false
+    )
+
+    val isLocationEnabled = preferencesManager.isLocationEnabled.stateIn(
+        viewModelScope, SharingStarted.Lazily, false
+    )
+
+    fun toggleNotifications(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setNotificationsEnabled(enabled)
+        }
+    }
+
+    fun toggleCamera(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setCameraEnabled(enabled)
+        }
+    }
+
+    fun toggleFileManager(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setFileManagerEnabled(enabled)
+        }
+    }
+
+    fun toggleLocation(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setLocationEnabled(enabled)
         }
     }
 }

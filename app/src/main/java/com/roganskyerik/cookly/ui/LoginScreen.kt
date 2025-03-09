@@ -1,5 +1,6 @@
 package com.roganskyerik.cookly.ui
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.messaging.FirebaseMessaging
 import com.roganskyerik.cookly.MainViewModel
 import com.roganskyerik.cookly.R
 import com.roganskyerik.cookly.ui.theme.CooklyTheme
@@ -192,15 +194,26 @@ fun LoginScreen(navController: NavController = rememberNavController(), viewMode
         Button(
             onClick = {
                 errorMessage = null
-                viewModel.login(email, password) { response, error ->
-                    if (response != null) {
-                        viewModel.saveTokens(response.accessToken, response.refreshToken)
-                        viewModel.startWebSocket(response.accessToken)
-                        navController.navigate("home") {
-                            popUpTo("login") { inclusive = true }
+
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val firebaseToken = task.result
+
+                        Log.d("FCM", "Firebase token: $firebaseToken")
+
+                        viewModel.login(email, password, firebaseToken) { response, error ->
+                            if (response != null) {
+                                viewModel.saveTokens(response.accessToken, response.refreshToken)
+                                viewModel.startWebSocket(response.accessToken)
+                                navController.navigate("home") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            } else {
+                                errorMessage = error
+                            }
                         }
                     } else {
-                        errorMessage = error
+                        errorMessage = "Failed to fetch Firebase token"
                     }
                 }
             },

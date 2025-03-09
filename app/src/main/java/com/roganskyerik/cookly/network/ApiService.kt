@@ -2,7 +2,7 @@ package com.roganskyerik.cookly.network
 
 import retrofit2.http.*
 
-data class LoginRequest(val email: String, val password: String, val deviceId: String)
+data class LoginRequest(val email: String, val password: String, val firebaseToken: String, val deviceId: String)
 data class LoginResponse(val accessToken: String, val refreshToken: String)
 
 data class RegisterRequest(val name: String, val email: String, val password: String, val preferences: Array<String>, val deviceId: String) {
