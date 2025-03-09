@@ -6,19 +6,45 @@ import androidx.lifecycle.viewModelScope
 import com.roganskyerik.cookly.network.LoginResponse
 import com.roganskyerik.cookly.network.RegisterResponse
 import com.roganskyerik.cookly.repository.ApiRepository
+import com.roganskyerik.cookly.utils.TokenManager
 import com.roganskyerik.cookly.utils.WebSocketManager
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import org.json.JSONObject
+import javax.inject.Inject
 
-class MainViewModel(private val repository: ApiRepository) : ViewModel() {
-    private val _forceLogoutEvent = MutableSharedFlow<Unit>()
-    val forceLogoutEvent = _forceLogoutEvent.asSharedFlow()
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val repository: ApiRepository,
+    private val tokenManager: TokenManager
+) : ViewModel() {
+    private val _forceLogout = MutableStateFlow(false)  // Use StateFlow
+    val forceLogout: StateFlow<Boolean> = _forceLogout
+
+    fun triggerForceLogout() {
+        viewModelScope.launch {
+            _forceLogout.emit(false) // Reset first
+            delay(50) // Small delay to allow UI to recognize the state change
+            _forceLogout.emit(true) // Now trigger logout
+        }
+    }
+
+    fun resetForceLogout() {
+        viewModelScope.launch {
+            _forceLogout.emit(false)
+        }
+    }
+
 
     fun login(email: String, password: String, onResult: (LoginResponse?, String?) -> Unit) {
         viewModelScope.launch {
@@ -52,8 +78,6 @@ class MainViewModel(private val repository: ApiRepository) : ViewModel() {
         }
     }
 
-
-
     // Socket implementation
     private val webSocketListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -75,11 +99,15 @@ class MainViewModel(private val repository: ApiRepository) : ViewModel() {
                     val message = jsonObject.getString("message")
                     Log.d("WebSocket", "Forced logout: $message")
 
-                    viewModelScope.launch {
-                        _forceLogoutEvent.emit(Unit)
+                    if(!viewModelScope.isActive) {
+                        Log.e("ViewModel", "Coroutine scope is not active")
+                        return
                     }
 
-                    WebSocketManager.closeWebSocket()
+                    viewModelScope.launch {
+                        Log.d("ViewModel", "Inside coroutine - Executing toggleForceLogout()")
+                        triggerForceLogout()
+                    }
                 }
             }
         }
@@ -113,5 +141,33 @@ class MainViewModel(private val repository: ApiRepository) : ViewModel() {
 
     override fun onCleared() {
         // Do not close the WebSocket here, as it should be kept open until the user logs out
+        Log.d("ViewModel", "ViewModel cleared")
+    }
+
+
+    fun saveTokens(accessToken: String, refreshToken: String) {
+        tokenManager.saveTokens(accessToken, refreshToken)
+    }
+
+    fun saveAccessToken(accessToken: String) {
+        tokenManager.saveAccessToken(accessToken)
+    }
+
+    fun getAccessToken(): String? {
+        return tokenManager.getAccessToken()
+    }
+
+    fun getRefreshToken(): String? {
+        return tokenManager.getRefreshToken()
+    }
+
+    fun clearTokens() {
+        tokenManager.clearTokens()
+    }
+
+    suspend fun refreshToken(): String? {
+        return withContext(Dispatchers.IO) {
+            tokenManager.refreshAccessToken()
+        }
     }
 }

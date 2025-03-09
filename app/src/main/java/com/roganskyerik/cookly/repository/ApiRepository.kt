@@ -1,16 +1,25 @@
 package com.roganskyerik.cookly.repository
 
 import android.content.Context
-import com.roganskyerik.cookly.network.*
+import com.roganskyerik.cookly.network.ApiService
+import com.roganskyerik.cookly.network.LoginRequest
+import com.roganskyerik.cookly.network.LoginResponse
+import com.roganskyerik.cookly.network.LogoutAllRequest
+import com.roganskyerik.cookly.network.LogoutRequest
+import com.roganskyerik.cookly.network.RegisterRequest
+import com.roganskyerik.cookly.network.RegisterResponse
 import com.roganskyerik.cookly.utils.getDeviceId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import retrofit2.HttpException
+import javax.inject.Inject
 
-class ApiRepository(context: Context) {
-    private val apiService: ApiService = ApiClient.create(context)
-    private val deviceId = getDeviceId(context)
+class ApiRepository @Inject constructor(
+    private val apiService: ApiService,
+    private val context: Context
+) {
+    private val deviceId by lazy { getDeviceId(context) }
 
     suspend fun login(email: String, password: String): Result<LoginResponse> {
         return withContext(Dispatchers.IO) {
@@ -29,7 +38,7 @@ class ApiRepository(context: Context) {
     suspend fun register(name: String, email: String, password: String): Result<RegisterResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.register(RegisterRequest(name, email, password, emptyArray<String>(), deviceId))
+                val response = apiService.register(RegisterRequest(name, email, password, emptyArray(), deviceId))
                 Result.success(response)
             } catch (e: HttpException) {
                 val errorMessage = extractErrorMessage(e)
@@ -72,7 +81,7 @@ class ApiRepository(context: Context) {
         return try {
             val errorBody = exception.response()?.errorBody()?.string()
             val json = JSONObject(errorBody ?: "{}")
-            json.optString("message", "Something went wrong")  // ✅ Get "message" field from API
+            json.optString("message", "Something went wrong")
         } catch (e: Exception) {
             "Something went wrong"
         }

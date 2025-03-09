@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.dagger.hilt)
+    id("org.jetbrains.kotlin.kapt")
+    //alias(libs.plugins.kotlin.kapt)
 }
 
 android {
@@ -43,6 +46,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.hilt.android) // ✅ Hilt runtime
+    kapt(libs.hilt.compiler)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -62,6 +67,8 @@ dependencies {
     implementation(libs.security.crypto.ktx)
     implementation(libs.androidx.navigation.testing)
     implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.runtime.livedata)
+    implementation(libs.hilt.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -70,6 +77,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.accompanist.systemuicontroller)
+    implementation(libs.hilt.navigation.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(platform(libs.androidx.compose.bom))

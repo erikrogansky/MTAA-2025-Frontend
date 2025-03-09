@@ -1,57 +1,62 @@
 package com.roganskyerik.cookly
 
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import com.roganskyerik.cookly.ui.theme.CooklyTheme
-
-import com.roganskyerik.cookly.ui.LoginScreen
-import androidx.compose.runtime.*
-import androidx.compose.ui.*
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
-
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.roganskyerik.cookly.network.refreshAccessToken
-import com.roganskyerik.cookly.repository.ApiRepository
 import com.roganskyerik.cookly.ui.AccountScreen
 import com.roganskyerik.cookly.ui.BottomNavigationBar
 import com.roganskyerik.cookly.ui.CreateScreen
 import com.roganskyerik.cookly.ui.DiscoverScreen
 import com.roganskyerik.cookly.ui.HomeScreen
+import com.roganskyerik.cookly.ui.LoginScreen
 import com.roganskyerik.cookly.ui.RegistrationScreen
 import com.roganskyerik.cookly.ui.SplashScreen
 import com.roganskyerik.cookly.ui.modals.ModalManager
 import com.roganskyerik.cookly.ui.modals.ModalManagerViewModel
+import com.roganskyerik.cookly.ui.theme.CooklyTheme
 import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
 import com.roganskyerik.cookly.utils.AppLifecycleObserver
-import com.roganskyerik.cookly.utils.TokenManager
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
+    private val modalManagerViewModel: ModalManagerViewModel by viewModels()
+    private val mainViewModel: MainViewModel by viewModels()
 
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             CooklyTheme {
-                AppNavigation(LocalContext.current)
+                AppNavigation(mainViewModel, modalManagerViewModel)
             }
         }
 
@@ -61,20 +66,27 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun AppNavigation(context: Context) {
+fun AppNavigation(viewModel: MainViewModel, modalManagerViewModel: ModalManagerViewModel) {
     val navController = rememberNavController()
-
-    val modalManagerViewModel: ModalManagerViewModel = viewModel()
-    val viewModel: MainViewModel = viewModel(factory = MainViewModelFactory(ApiRepository(context)))
-
     var startDestination by remember { mutableStateOf("splash") }
     val modalType by modalManagerViewModel.modalType.collectAsState()
-
     val colors = LocalCooklyColors.current
-
     val systemUiController = rememberSystemUiController()
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5
     val statusBarIconColor = !isDarkTheme
+
+    val shouldNavigate by viewModel.forceLogout.collectAsState()
+    LaunchedEffect(shouldNavigate) {
+        if (shouldNavigate) {
+            viewModel.clearTokens()
+            navController.navigate("login") {
+                popUpTo("splash") { inclusive = true }
+            }
+            delay(100)
+            viewModel.resetForceLogout()
+        }
+    }
+
 
     SideEffect {
         systemUiController.setStatusBarColor(
@@ -89,29 +101,20 @@ fun AppNavigation(context: Context) {
     }
 
     LaunchedEffect(Unit) {
-        viewModel.forceLogoutEvent.collectLatest {
-            TokenManager.clearTokens(context)
-            navController.navigate("login") {
-                popUpTo(0) { inclusive = true }
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        val accessToken = TokenManager.getAccessToken(context)
+        val accessToken = viewModel.getAccessToken()
         if (accessToken != null) {
             viewModel.startWebSocket(accessToken)
         }
     }
 
     LaunchedEffect(Unit) {
-        val refreshToken = TokenManager.getRefreshToken(context)
+        val refreshToken = viewModel.getRefreshToken()
         delay(1500)
         startDestination = when {
             refreshToken != null -> {
-                val newAccessToken = refreshAccessToken(context)
+                val newAccessToken = viewModel.refreshToken()
                 if (newAccessToken != null) {
-                    TokenManager.saveAccessToken(context, newAccessToken)
+                    viewModel.saveAccessToken(newAccessToken)
                     "home"
                 } else {
                     "login"
@@ -120,7 +123,7 @@ fun AppNavigation(context: Context) {
             else -> "login"
         }
         if (startDestination == "login") {
-            TokenManager.clearTokens(context)
+            viewModel.clearTokens()
         } else {
             // Connect to user's socket
         }
@@ -145,8 +148,8 @@ fun AppNavigation(context: Context) {
                 modifier = Modifier.padding(paddingValues).background(colors.Background)
             ) {
                 composable("splash") { SplashScreen() }
-                composable("login") { LoginScreen(navController) }
-                composable("register") { RegistrationScreen(navController) }
+                composable("login") { LoginScreen(navController, viewModel) }
+                composable("register") { RegistrationScreen(navController, viewModel) }
                 composable("home") { HomeScreen(navController) }
                 composable("discover") { DiscoverScreen(navController) }
                 composable("create") { CreateScreen(navController) }

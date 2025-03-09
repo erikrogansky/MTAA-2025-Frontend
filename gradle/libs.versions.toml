@@ -16,6 +16,8 @@ appcompat = "1.7.0"
 androidx-security = "1.1.0-alpha06"
 navigationTesting = "2.8.8"
 lifecycleProcess = "2.8.7"
+runtimeLivedata = "1.7.8"
+hilt = "2.50"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,9 +45,13 @@ androidx-navigation-testing = { group = "androidx.navigation", name = "navigatio
 androidx-material = { group = "androidx.compose.material", name = "material" }
 accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version = "0.30.1" }
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
+androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version = "1.2.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
