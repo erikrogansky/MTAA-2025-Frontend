@@ -30,7 +30,7 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val repository: ApiRepository,
     private val tokenManager: TokenManager,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
 ) : ViewModel() {
 
     // Authentication methods
@@ -55,6 +55,14 @@ class MainViewModel @Inject constructor(
     fun login(email: String, password: String, firebaseToken: String, onResult: (LoginResponse?, String?) -> Unit) {
         viewModelScope.launch {
             val result = repository.login(email, password, firebaseToken)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun loginWithGoogle(idToken: String,firebaseToken: String, provider: String, onResult: (LoginResponse?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.loginWithGoogle(idToken, firebaseToken, provider)
             result.onSuccess { response -> onResult(response, null) }
             result.onFailure { error -> onResult(null, error.message) }
         }

@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Cookly</string>
+    <string name="default_web_client_id">998142415021-r511r9gdd8dpq16o0p7cjis9f9dlgncm.apps.googleusercontent.com</string>
+    <string name="facebook_app_id">541268675112539</string>
+    <string name="facebook_client_token">b8f1556f3a5f665264b74bbd274efcfe</string>
 </resources>

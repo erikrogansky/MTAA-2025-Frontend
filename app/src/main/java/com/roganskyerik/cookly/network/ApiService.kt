@@ -5,6 +5,8 @@ import retrofit2.http.*
 data class LoginRequest(val email: String, val password: String, val firebaseToken: String, val deviceId: String)
 data class LoginResponse(val accessToken: String, val refreshToken: String)
 
+data class OauthLoginRequest(val idToken: String, val firebaseToken: String, val provider: String, val deviceId: String)
+
 data class RegisterRequest(val name: String, val email: String, val password: String, val preferences: Array<String>, val deviceId: String) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -30,6 +32,9 @@ data class RefreshTokenResponse(val accessToken: String)
 interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
+
+    @POST("auth/oauth")
+    suspend fun loginWithGoogle(@Body request: OauthLoginRequest): LoginResponse
 
     @POST("auth/register")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse

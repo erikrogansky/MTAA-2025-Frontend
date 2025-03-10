@@ -12,7 +12,20 @@
           "package_name": "com.roganskyerik.cookly"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "998142415021-gcd2nc8nrarj5n9qffc2oavuuerfmi9t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.roganskyerik.cookly",
+            "certificate_hash": "291c40db75bb3b728086406c89861c4c7d21c554"
+          }
+        },
+        {
+          "client_id": "998142415021-r511r9gdd8dpq16o0p7cjis9f9dlgncm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBCu5YbAXZltwct9Q6SiIg9WkMYkdCVC3c"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "998142415021-r511r9gdd8dpq16o0p7cjis9f9dlgncm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

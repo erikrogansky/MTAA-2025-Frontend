@@ -2,9 +2,11 @@ package com.roganskyerik.cookly
 
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -33,6 +35,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.facebook.CallbackManager
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.roganskyerik.cookly.permissions.PreferencesManager
 import com.roganskyerik.cookly.ui.AccountScreen
@@ -52,13 +55,17 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val modalManagerViewModel: ModalManagerViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
+    private lateinit var callbackManager: CallbackManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        callbackManager = CallbackManager.Factory.create()
 
         val preferencesManager = PreferencesManager(this)
         val isNotificationsEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -76,17 +83,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CooklyTheme {
-                AppNavigation(mainViewModel, modalManagerViewModel)
+                AppNavigation(mainViewModel, modalManagerViewModel, callbackManager)
             }
         }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver())
     }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val handled = callbackManager.onActivityResult(requestCode, resultCode, data)
+        Log.d("Facebook Sign-In", "callbackManager.onActivityResult handled: $handled")
+    }
 }
 
 
 @Composable
-fun AppNavigation(viewModel: MainViewModel, modalManagerViewModel: ModalManagerViewModel) {
+fun AppNavigation(viewModel: MainViewModel, modalManagerViewModel: ModalManagerViewModel, callbackManager: CallbackManager) {
     val navController = rememberNavController()
     var startDestination by remember { mutableStateOf("splash") }
     val modalType by modalManagerViewModel.modalType.collectAsState()
@@ -165,10 +178,12 @@ fun AppNavigation(viewModel: MainViewModel, modalManagerViewModel: ModalManagerV
             NavHost(
                 navController = navController,
                 startDestination = "splash",
-                modifier = Modifier.padding(paddingValues).background(colors.Background)
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .background(colors.Background)
             ) {
                 composable("splash") { SplashScreen() }
-                composable("login") { LoginScreen(navController, viewModel) }
+                composable("login") { LoginScreen(navController, viewModel, callbackManager) }
                 composable("register") { RegistrationScreen(navController, viewModel) }
                 composable("home") { HomeScreen(navController) }
                 composable("discover") { DiscoverScreen(navController) }

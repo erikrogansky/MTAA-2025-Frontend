@@ -27,8 +27,8 @@
         </DialogSelection>
       </SelectionState>
       <SelectionState runConfigName="Cookly">
-        <option name="selectionMode" value="DIALOG" />
-        <DropdownSelection timestamp="2025-03-08T22:38:03.788657Z">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2025-03-10T17:55:56.187279Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=/Users/roganskyerik/.android/avd/Medium_Phone_API_35.avd" />

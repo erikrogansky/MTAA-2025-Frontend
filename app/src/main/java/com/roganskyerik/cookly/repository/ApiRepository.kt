@@ -6,6 +6,7 @@ import com.roganskyerik.cookly.network.LoginRequest
 import com.roganskyerik.cookly.network.LoginResponse
 import com.roganskyerik.cookly.network.LogoutAllRequest
 import com.roganskyerik.cookly.network.LogoutRequest
+import com.roganskyerik.cookly.network.OauthLoginRequest
 import com.roganskyerik.cookly.network.RegisterRequest
 import com.roganskyerik.cookly.network.RegisterResponse
 import com.roganskyerik.cookly.utils.getDeviceId
@@ -25,6 +26,20 @@ class ApiRepository @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val response = apiService.login(LoginRequest(email, password, firebaseToken, deviceId))
+                Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun loginWithGoogle(idToken: String, firebaseToken: String, provider: String): Result<LoginResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.loginWithGoogle(OauthLoginRequest(idToken, firebaseToken, provider, deviceId))
                 Result.success(response)
             } catch (e: HttpException) {
                 val errorMessage = extractErrorMessage(e)
