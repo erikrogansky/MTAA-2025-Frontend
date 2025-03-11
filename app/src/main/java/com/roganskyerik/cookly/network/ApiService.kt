@@ -1,6 +1,8 @@
 package com.roganskyerik.cookly.network
 
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.POST
 
 data class LoginRequest(val email: String, val password: String, val firebaseToken: String, val deviceId: String)
 data class LoginResponse(val accessToken: String, val refreshToken: String)
@@ -29,6 +31,10 @@ data class LogoutAllRequest(val refreshToken: String)
 data class RefreshTokenRequest(val refreshToken: String, val deviceId: String)
 data class RefreshTokenResponse(val accessToken: String)
 
+data class UserData(val name: String, val hasPassword: Boolean, val hasFacebookAuth: Boolean, val hasGoogleAuth: Boolean, val darkMode: String)
+
+data class UpdateModeRequest(val mode: String)
+
 interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
@@ -47,4 +53,10 @@ interface ApiService {
 
     @POST("auth/refresh-token")
     suspend fun refreshToken(@Body request: RefreshTokenRequest): RefreshTokenResponse
+
+    @GET("users/get-data")
+    suspend fun fetchUserData(): UserData
+
+    @POST("users/update-mode")
+    suspend fun updateMode(@Body request: UpdateModeRequest)
 }

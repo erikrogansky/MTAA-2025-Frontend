@@ -9,6 +9,9 @@ import com.roganskyerik.cookly.network.LogoutRequest
 import com.roganskyerik.cookly.network.OauthLoginRequest
 import com.roganskyerik.cookly.network.RegisterRequest
 import com.roganskyerik.cookly.network.RegisterResponse
+import com.roganskyerik.cookly.network.UpdateModeRequest
+import com.roganskyerik.cookly.network.UserData
+import com.roganskyerik.cookly.ui.Mode
 import com.roganskyerik.cookly.utils.getDeviceId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -83,6 +86,34 @@ class ApiRepository @Inject constructor(
             try {
                 apiService.logoutAll(LogoutAllRequest(refreshToken))
                 Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun fetchUserData(): Result<UserData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.fetchUserData()
+                Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun updateMode(mode: Mode): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.updateMode(UpdateModeRequest(mode.value))
+                Result.success(response)
             } catch (e: HttpException) {
                 val errorMessage = extractErrorMessage(e)
                 Result.failure(Exception(errorMessage))

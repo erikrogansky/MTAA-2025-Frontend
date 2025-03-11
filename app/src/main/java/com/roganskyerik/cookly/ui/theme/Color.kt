@@ -15,6 +15,7 @@ data class CooklyColors(
     val DarkOrange: Color,
 
     val Error: Color,
+    val Positive: Color,
 
     val Background: Color,
 
@@ -35,6 +36,7 @@ val LightCooklyColors = CooklyColors(
     DarkOrange = Color(0xFFE28900),
 
     Error = Color(0xFFD90000),
+    Positive = Color(0xFF009600),
 
     Background = Color(0xFFFFFFFF),
 
@@ -55,6 +57,7 @@ val DarkCooklyColors = CooklyColors(
     DarkOrange = Color(0xFFE28900),
 
     Error = Color(0xFFD90000),
+    Positive = Color(0xFF009600),
 
     Background = Color(0xFF15110B),
 

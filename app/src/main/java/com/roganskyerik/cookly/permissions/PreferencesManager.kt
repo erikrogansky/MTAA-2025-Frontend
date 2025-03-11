@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import com.roganskyerik.cookly.ui.Mode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -21,6 +22,7 @@ class PreferencesManager @Inject constructor(@ApplicationContext context: Contex
         private val CAMERA_ENABLED = booleanPreferencesKey("camera_enabled")
         private val FILE_MANAGER_ENABLED = booleanPreferencesKey("file_manager_enabled")
         private val LOCATION_ENABLED = booleanPreferencesKey("location_enabled")
+        private val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     val isNotificationsEnabled: Flow<Boolean> = dataStore.data
@@ -34,6 +36,11 @@ class PreferencesManager @Inject constructor(@ApplicationContext context: Contex
 
     val isLocationEnabled: Flow<Boolean> = dataStore.data
         .map { preferences -> preferences[LOCATION_ENABLED] ?: false }
+
+    val themeMode: Flow<Mode> = dataStore.data.map { preferences ->
+        Mode.fromValue(preferences[THEME_MODE] ?: Mode.SYSTEM.value)
+    }
+
 
     suspend fun setNotificationsEnabled(value: Boolean) {
         dataStore.edit { preferences -> preferences[NOTIFICATIONS_ENABLED] = value }
@@ -49,5 +56,11 @@ class PreferencesManager @Inject constructor(@ApplicationContext context: Contex
 
     suspend fun setLocationEnabled(value: Boolean) {
         dataStore.edit { preferences -> preferences[LOCATION_ENABLED] = value }
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        dataStore.edit { preferences ->
+            preferences[THEME_MODE] = mode
+        }
     }
 }

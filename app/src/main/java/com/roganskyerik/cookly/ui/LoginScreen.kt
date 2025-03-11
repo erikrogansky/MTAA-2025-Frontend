@@ -2,6 +2,7 @@ package com.roganskyerik.cookly.ui
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -62,6 +63,7 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import com.roganskyerik.cookly.MainViewModel
@@ -348,8 +350,8 @@ fun GoogleLoginButton(context: Context, viewModel: MainViewModel, navController:
         .setGoogleIdTokenRequestOptions(
             BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
                 .setSupported(true)
-                .setServerClientId(context.getString(R.string.default_web_client_id)) // ✅ Ensure correct Web Client ID
-                .setFilterByAuthorizedAccounts(false) // ✅ Allow new account selection
+                .setServerClientId(context.getString(R.string.default_web_client_id))
+                .setFilterByAuthorizedAccounts(false)
                 .build()
         )
         .build()
@@ -391,6 +393,13 @@ fun GoogleLoginButton(context: Context, viewModel: MainViewModel, navController:
                                     }
                                 }
                             }
+                        }
+                    } else {
+                        val exception = authTask.exception
+                        if (exception is FirebaseAuthUserCollisionException) {
+                            Toast.makeText(context, "This email is already linked to another account. Please log in first.", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Authentication failed: ${exception?.message}", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -477,7 +486,12 @@ fun FacebookLoginButton(
                             }
                         }
                     } else {
-                        Log.e("Facebook Sign-In", "Firebase authentication failed", authTask.exception)
+                        val exception = authTask.exception
+                        if (exception is FirebaseAuthUserCollisionException) {
+                            Toast.makeText(context, "This email is already linked to another account. Please log in first.", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Authentication failed: ${exception?.message}", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
         }

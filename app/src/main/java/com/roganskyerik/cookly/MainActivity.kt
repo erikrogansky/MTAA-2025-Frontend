@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -44,6 +45,7 @@ import com.roganskyerik.cookly.ui.CreateScreen
 import com.roganskyerik.cookly.ui.DiscoverScreen
 import com.roganskyerik.cookly.ui.HomeScreen
 import com.roganskyerik.cookly.ui.LoginScreen
+import com.roganskyerik.cookly.ui.Mode
 import com.roganskyerik.cookly.ui.RegistrationScreen
 import com.roganskyerik.cookly.ui.SplashScreen
 import com.roganskyerik.cookly.ui.modals.ModalManager
@@ -82,7 +84,15 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            CooklyTheme {
+            val themeMode by mainViewModel.themeMode.collectAsState()
+
+            CooklyTheme(
+                darkTheme = when (themeMode) {
+                    Mode.DARK -> true
+                    Mode.LIGHT -> false
+                    Mode.SYSTEM -> isSystemInDarkTheme()
+                }
+            ) {
                 AppNavigation(mainViewModel, modalManagerViewModel, callbackManager)
             }
         }
@@ -184,11 +194,11 @@ fun AppNavigation(viewModel: MainViewModel, modalManagerViewModel: ModalManagerV
             ) {
                 composable("splash") { SplashScreen() }
                 composable("login") { LoginScreen(navController, viewModel, callbackManager) }
-                composable("register") { RegistrationScreen(navController, viewModel) }
+                composable("register") { RegistrationScreen(navController, viewModel, callbackManager) }
                 composable("home") { HomeScreen(navController) }
                 composable("discover") { DiscoverScreen(navController) }
                 composable("create") { CreateScreen(navController) }
-                composable("account") { AccountScreen(navController, modalManagerViewModel::showModal) }
+                composable("account") { AccountScreen(navController, modalManagerViewModel::showModal, callbackManager) }
             }
         }
 

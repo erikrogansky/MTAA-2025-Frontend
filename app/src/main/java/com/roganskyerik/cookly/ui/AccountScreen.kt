@@ -6,6 +6,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,6 +36,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,580 +59,978 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
+import com.google.android.gms.auth.api.identity.BeginSignInRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.SignInClient
+import com.google.firebase.auth.FacebookAuthProvider
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.messaging.FirebaseMessaging
 import com.roganskyerik.cookly.MainViewModel
 import com.roganskyerik.cookly.R
+import com.roganskyerik.cookly.ui.components.RotatingLoader
 import com.roganskyerik.cookly.ui.modals.ModalType
 import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
 import com.roganskyerik.cookly.ui.theme.Nunito
 
+enum class Mode(val value: String, val displayName: String) {
+    LIGHT("n", "Light Mode"),
+    DARK("y", "Dark Mode"),
+    SYSTEM("s", "System Preferences");
+
+    companion object {
+        fun fromValue(value: String): Mode {
+            return entries.firstOrNull { it.value == value } ?: SYSTEM
+        }
+    }
+}
+
+
 @Composable
-fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, viewModel: MainViewModel = hiltViewModel()) {
+fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, callbackManager: CallbackManager, viewModel: MainViewModel = hiltViewModel()) {
+    val context = navController.context;
     val colors = LocalCooklyColors.current
 
+    val userData by viewModel.userData.collectAsState()
+    val isLoading = userData?.name.isNullOrEmpty()
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var mode by remember { mutableStateOf(Mode.SYSTEM) }
 
     val isNotificationsEnabled by viewModel.isNotificationsEnabled.collectAsState()
     val isCameraEnabled by viewModel.isCameraEnabled.collectAsState()
     val isFileManagerEnabled by viewModel.isFileManagerEnabled.collectAsState()
     val isLocationEnabled by viewModel.isLocationEnabled.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp).background(colors.Background),
-        verticalArrangement = Arrangement.Top,
-    ) {
-        Row (
-            modifier = Modifier
-                .fillMaxWidth(),
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.user_icon_placeholder),
-                contentDescription = "User Icon",
+    LaunchedEffect(userData) {
+        mode = Mode.fromValue(userData?.darkMode ?: "s")
+    }
+
+    Box (
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.Background),
+        contentAlignment = Alignment.Center
+    ){
+        if (isLoading) {
+            RotatingLoader()
+        } else {
+            Column(
                 modifier = Modifier
-                    .size(50.dp)
-                    .align(Alignment.CenterVertically)
-            )
-
-            Spacer(Modifier.width(10.dp))
-
-            Text(
-                text = "Alex Smith",
-                style = TextStyle(
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp
-                ),
-                modifier = Modifier.align(Alignment.CenterVertically)
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = {
-                    val refreshToken = viewModel.getRefreshToken() ?: "no_token"
-
-                    viewModel.logout(refreshToken) { response, error ->
-                        if (response != null) {
-                            // Do nothing
-                        } else {
-                            errorMessage = error
-                        }
-
-                        navController.navigate("login") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                        viewModel.clearTokens()
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.CenterVertically),
-                    //.shadow(elevation = 1.dp, shape = RoundedCornerShape(50.dp)),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.Background,
-                    contentColor = colors.FontColor
-                ),
-                border = BorderStroke(1.dp, colors.FontColor),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .background(colors.Background),
+                verticalArrangement = Arrangement.Top,
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.logout_icon),
-                    contentDescription = "Logout Icon",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "Log out",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 16.sp
-                    ),
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(22.dp))
-
-        Column()
-        {
-            Text(
-                text = "Account",
-                style = TextStyle(
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp
-                )
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "Name",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.user_icon_placeholder),
+                        contentDescription = "User Icon",
+                        modifier = Modifier
+                            .size(50.dp)
+                            .align(Alignment.CenterVertically)
                     )
-                )
 
-                Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.width(10.dp))
 
-                Text (
-                    text = "Alex Smith",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                    Text(
+                        text = userData?.name ?: "Anonymous User",
+                        style = TextStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp
+                        ),
+                        modifier = Modifier.align(Alignment.CenterVertically)
                     )
-                )
 
-                Spacer(Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.weight(1f))
 
-                Icon(
-                    painter = painterResource(id = R.drawable.edit_icon),
-                    contentDescription = "Edit Icon",
-                    modifier = Modifier.size(16.dp).align(Alignment.CenterVertically)
-                )
-            }
+                    Button(
+                        onClick = {
+                            val refreshToken = viewModel.getRefreshToken() ?: "no_token"
 
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "Profile photo",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                Text (
-                    text = "Change photo",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        textDecoration = TextDecoration.Underline,
-                    )
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "Password",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                Text (
-                    text = "Change password",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        textDecoration = TextDecoration.Underline,
-                    )
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(26.dp))
-
-        Column()
-        {
-            Text(
-                text = "Preferences",
-                style = TextStyle(
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp
-                )
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "Camera",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                CustomSwitch(
-                    isChecked = isCameraEnabled,
-                    onCheckedChange = { viewModel.toggleCamera(it) },
-                    onColor = colors.Orange100,
-                    onBorderColor = colors.Orange100,
-                    offColor = colors.Background,
-                    offBorderColor = colors.FontColor,
-                    offBorderOpacity = 0.5f,
-                    offThumbColor = colors.FontColor,
-                    offThumbOpacity = 0.2f,
-                    onThumbColor = Color.White,
-                    onThumbOpacity = 1f,
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "File manager",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                CustomSwitch(
-                    isChecked = isFileManagerEnabled,
-                    onCheckedChange = { viewModel.toggleFileManager(it) },
-                    onColor = colors.Orange100,
-                    onBorderColor = colors.Orange100,
-                    offColor = colors.Background,
-                    offBorderColor = colors.FontColor,
-                    offBorderOpacity = 0.5f,
-                    offThumbColor = colors.FontColor,
-                    offThumbOpacity = 0.2f,
-                    onThumbColor = Color.White,
-                    onThumbOpacity = 1f,
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "Notifications",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                val context = LocalContext.current
-                val activity = context as? Activity
-
-                fun requestNotificationPermission(activity: Activity) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        when {
-                            ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
-                                // Permission already granted
-                            }
-                            ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS) -> {
-                                ActivityCompat.requestPermissions(
-                                    activity,
-                                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                                    1001
-                                )
-                            }
-                            else -> {
-                                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            viewModel.logout(refreshToken) { response, error ->
+                                if (response != null) {
+                                    // Do nothing
+                                } else {
+                                    errorMessage = error
                                 }
-                                context.startActivity(intent)
+
+                                navController.navigate("login") {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                                viewModel.clearTokens()
                             }
-                        }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically),
+                        //.shadow(elevation = 1.dp, shape = RoundedCornerShape(50.dp)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.Background,
+                            contentColor = colors.FontColor
+                        ),
+                        border = BorderStroke(1.dp, colors.FontColor),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.logout_icon),
+                            contentDescription = "Logout Icon",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Log out",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp
+                            ),
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
                     }
                 }
 
+                Spacer(modifier = Modifier.height(22.dp))
 
+                Column()
+                {
+                    Text(
+                        text = "Account",
+                        style = TextStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 18.sp
+                        )
+                    )
 
-                CustomSwitch(
-                    isChecked = isNotificationsEnabled,
-                    onCheckedChange = { isChecked ->
-                        if (isChecked) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                                    activity?.let { requestNotificationPermission(it) }
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Name",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text (
+                            text = userData?.name ?: "Anonymous User",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.width(6.dp))
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.edit_icon),
+                            contentDescription = "Edit Icon",
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.CenterVertically)
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Profile photo",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text (
+                            text = "Change photo",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                textDecoration = TextDecoration.Underline,
+                            )
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Google account",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        val oneTapClient: SignInClient = Identity.getSignInClient(context)
+                        val signInRequest = BeginSignInRequest.builder()
+                            .setGoogleIdTokenRequestOptions(
+                                BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
+                                    .setSupported(true)
+                                    .setServerClientId(context.getString(R.string.default_web_client_id))
+                                    .setFilterByAuthorizedAccounts(false)
+                                    .build()
+                            )
+                            .build()
+
+                        val signInLauncher = rememberLauncherForActivityResult(
+                            ActivityResultContracts.StartIntentSenderForResult()) { result ->
+                            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                                val credential = result.data?.let { oneTapClient.getSignInCredentialFromIntent(it) }
+                                val googleToken = credential?.googleIdToken
+
+                                if (googleToken == null) {
+                                    Log.e("Google Sign-In", "Google ID Token is null")
+                                    return@rememberLauncherForActivityResult
                                 }
-                            }
-                            viewModel.toggleNotifications(isChecked)
-                        } else {
-                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                            }
-                            context.startActivity(intent)
-                        }
-                    },
-                    onColor = colors.Orange100,
-                    onBorderColor = colors.Orange100,
-                    offColor = colors.Background,
-                    offBorderColor = colors.FontColor,
-                    offBorderOpacity = 0.5f,
-                    offThumbColor = colors.FontColor,
-                    offThumbOpacity = 0.2f,
-                    onThumbColor = Color.White,
-                    onThumbOpacity = 1f,
-                    onText = "Manage"
-                )
-            }
 
-            Spacer(Modifier.height(14.dp))
+                                val firebaseCredential = GoogleAuthProvider.getCredential(googleToken, null)
+                                val currentUser = FirebaseAuth.getInstance().currentUser
+                                if (currentUser == null) {
+                                    FirebaseAuth.getInstance().signInWithCredential(firebaseCredential)
+                                        .addOnCompleteListener { authTask ->
+                                            if (authTask.isSuccessful) {
+                                                FirebaseMessaging.getInstance().token.addOnCompleteListener { tokenTask ->
+                                                    if (tokenTask.isSuccessful) {
+                                                        val firebaseToken = tokenTask.result
+                                                        val firebaseIdToken = authTask.result?.user?.getIdToken(false)
 
-            Row {
-                Text(
-                    text = "Location",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
+                                                        firebaseIdToken?.addOnSuccessListener { result ->
+                                                            val idToken = result.token
+                                                            Log.d("Google Sign-In", "Firebase ID Token: $idToken")
+                                                            Log.d("Google Sign-In", "Firebase Notification Token: $firebaseToken")
 
-                Spacer(Modifier.weight(1f))
-
-                CustomSwitch(
-                    isChecked = isLocationEnabled,
-                    onCheckedChange = { viewModel.toggleLocation(it) },
-                    onColor = colors.Orange100,
-                    onBorderColor = colors.Orange100,
-                    offColor = colors.Background,
-                    offBorderColor = colors.FontColor,
-                    offBorderOpacity = 0.5f,
-                    offThumbColor = colors.FontColor,
-                    offThumbOpacity = 0.2f,
-                    onThumbColor = Color.White,
-                    onThumbOpacity = 1f,
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(26.dp))
-
-        Column()
-        {
-            Text(
-                text = "Visualization",
-                style = TextStyle(
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp
-                )
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "Dark mode",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                Text (
-                    text = "System preferences",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.width(6.dp))
-
-                Icon(
-                    painter = painterResource(id = R.drawable.arrow_bottom_icon),
-                    contentDescription = "Edit Icon",
-                    modifier = Modifier.size(16.dp).align(Alignment.CenterVertically)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(22.dp))
-
-        Column()
-        {
-            Text(
-                text = "Danger zone",
-                style = TextStyle(
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp
-                )
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            Row {
-                Text(
-                    text = "Sign out of all devices",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                Text(
-                    text = "Sign out everywhere",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        textDecoration = TextDecoration.Underline,
-                        color = colors.Error
-                    ),
-                    modifier = Modifier.clickable {
-                        showModal(
-                            ModalType.Custom { onDismiss ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth(),
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "Are you sure?",
-                                        style = TextStyle(
-                                            fontFamily = Nunito,
-                                            fontWeight = FontWeight.Black,
-                                            fontSize = 22.sp,
-                                            textAlign = TextAlign.Center
-                                        ),
-                                        color = colors.FontColor
-                                    )
-
-                                    Spacer(Modifier.height(14.dp))
-
-                                    Text(
-                                        text = "You will be logged out of all devices.",
-                                        style = TextStyle(
-                                            fontFamily = Nunito,
-                                            fontWeight = FontWeight.Medium,
-                                            fontSize = 16.sp,
-                                            textAlign = TextAlign.Center
-                                        ),
-                                        color = colors.FontColor
-                                    )
-
-                                    Spacer(Modifier.height(24.dp))
-
-                                    Row(Modifier.fillMaxWidth()){
-                                        Button(
-                                            onClick = { onDismiss() },
-                                            modifier = Modifier.align(Alignment.CenterVertically)
-                                                .weight(1f),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = colors.ModalBackground,
-                                                contentColor = colors.FontColor
-                                            ),
-                                            border = BorderStroke(1.dp, colors.FontColor),
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                                        ) {
-                                            Text(
-                                                text = "Cancel",
-                                                style = TextStyle(
-                                                    fontFamily = Nunito,
-                                                    fontWeight = FontWeight.Black,
-                                                    fontSize = 16.sp
-                                                ),
-                                                modifier = Modifier.align(Alignment.CenterVertically)
-                                            )
-                                        }
-
-                                        Spacer(Modifier.width(10.dp))
-
-                                        Button(
-                                            onClick = {
-                                                val refreshToken = viewModel.getRefreshToken() ?: "no_token"
-
-                                                viewModel.logoutAll(refreshToken) { response, error ->
-                                                    if (response != null) {
-                                                        // Do nothing
-                                                    } else {
-                                                        errorMessage = error
+                                                            viewModel.loginWithGoogle(idToken.toString(), firebaseToken, "google") { response, error ->
+                                                                if (response != null) {
+                                                                    viewModel.saveTokens(response.accessToken, response.refreshToken)
+                                                                    viewModel.startWebSocket(response.accessToken)
+                                                                } else {
+                                                                    Log.e("Google Sign-In", "Google sign-in failed: $error")
+                                                                }
+                                                            }
+                                                        }
                                                     }
-
-                                                    navController.navigate("login") {
-                                                        popUpTo("account") { inclusive = true }
-                                                    }
-                                                    viewModel.clearTokens()
-
-                                                    onDismiss()
                                                 }
-                                            },
+                                            } else {
+                                                val exception = authTask.exception
+                                                if (exception is FirebaseAuthUserCollisionException) {
+                                                    Toast.makeText(context, "This email is already linked to another account. Please log in first.", Toast.LENGTH_LONG).show()
+                                                } else {
+                                                    Toast.makeText(context, "Authentication failed: ${exception?.message}", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        }
+                                    return@rememberLauncherForActivityResult
+                                }
+                                currentUser!!.linkWithCredential(firebaseCredential)
+                                    .addOnCompleteListener { authTask ->
+                                        if (authTask.isSuccessful) {
+                                            FirebaseMessaging.getInstance().token.addOnCompleteListener { tokenTask ->
+                                                if (tokenTask.isSuccessful) {
+                                                    val firebaseToken = tokenTask.result
+                                                    val firebaseIdToken = authTask.result?.user?.getIdToken(false)
 
-                                            modifier = Modifier.align(Alignment.CenterVertically)
-                                                .weight(1f),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = colors.Orange100,
-                                                contentColor = Color.White
-                                            ),
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                                        ) {
-                                            Text(
-                                                text = "Confirm",
-                                                style = TextStyle(
-                                                    fontFamily = Nunito,
-                                                    fontWeight = FontWeight.Black,
-                                                    fontSize = 16.sp
-                                                ),
-                                            )
+                                                    firebaseIdToken?.addOnSuccessListener { result ->
+                                                        val idToken = result.token
+                                                        Log.d("Google Sign-In", "Firebase ID Token: $idToken")
+                                                        Log.d("Google Sign-In", "Firebase Notification Token: $firebaseToken")
+
+                                                        viewModel.loginWithGoogle(idToken.toString(), firebaseToken, "google") { response, error ->
+                                                            if (response != null) {
+                                                                viewModel.saveTokens(response.accessToken, response.refreshToken)
+                                                                viewModel.startWebSocket(response.accessToken)
+                                                            } else {
+                                                                Log.e("Google Sign-In", "Google sign-in failed: $error")
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            val exception = authTask.exception
+                                            if (exception is FirebaseAuthUserCollisionException) {
+                                                Toast.makeText(context, "This email is already linked to another account. Please log in first.", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, "Authentication failed: ${exception?.message}", Toast.LENGTH_LONG).show()
+                                            }
                                         }
                                     }
-                                }
+                            } else {
+                                Log.e("Google Sign-In", "Google sign-in cancelled")
+                            }
+                        }
+
+                        Text (
+                            text = if (userData?.hasGoogleAuth == true) "Linked" else "Link account",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                textDecoration = if (userData?.hasGoogleAuth == true) TextDecoration.None else TextDecoration.Underline,
+                            ),
+                            color = if (userData?.hasGoogleAuth == true) colors.Positive else colors.FontColor,
+                            modifier = if (userData?.hasGoogleAuth == true) Modifier else Modifier.clickable {
+                                oneTapClient.beginSignIn(signInRequest)
+                                    .addOnSuccessListener { result ->
+                                        signInLauncher.launch(IntentSenderRequest.Builder(result.pendingIntent.intentSender).build())
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e("Google Sign-In", "One Tap failed, user might need to manually select an account", e)
+                                    }
                             }
                         )
                     }
 
-                )
+                    Spacer(Modifier.height(14.dp))
 
-            }
+                    val auth = FirebaseAuth.getInstance()
 
-            Spacer(Modifier.height(14.dp))
+                    val loginCallback = object : FacebookCallback<LoginResult> {
+                        override fun onSuccess(loginResult: LoginResult) {
+                            val accessToken = loginResult.accessToken
+                            val credential = FacebookAuthProvider.getCredential(accessToken.token)
 
-            Row {
-                Text(
-                    text = "Account deletion",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                            val currentUser = auth.currentUser
+                            if (currentUser == null) {
+                                auth.signInWithCredential(credential)
+                                    .addOnCompleteListener { authTask ->
+                                        if (authTask.isSuccessful) {
+                                            val firebaseUser = auth.currentUser
+                                            firebaseUser?.getIdToken(false)?.addOnSuccessListener { result ->
+                                                val idToken = result.token
+                                                FirebaseMessaging.getInstance().token.addOnSuccessListener { firebaseToken ->
+                                                    Log.d("Facebook Sign-In", "Firebase ID Token: $idToken")
+                                                    Log.d("Facebook Sign-In", "Firebase Notification Token: $firebaseToken")
+
+                                                    viewModel.loginWithGoogle(idToken.toString(), firebaseToken, "facebook") { response, error ->
+                                                        if (response != null) {
+                                                            viewModel.saveTokens(response.accessToken, response.refreshToken)
+                                                            viewModel.startWebSocket(response.accessToken)
+                                                        } else {
+                                                            Log.e("Facebook Sign-In", "Facebook sign-in failed: $error")
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            val exception = authTask.exception
+                                            if (exception is FirebaseAuthUserCollisionException) {
+                                                Toast.makeText(context, "This email is already linked to another account. Please log in first.", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, "Authentication failed: ${exception?.message}", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                    }
+                                return
+                            }
+                            currentUser!!.linkWithCredential(credential)
+                                .addOnCompleteListener { authTask ->
+                                    if (authTask.isSuccessful) {
+                                        val firebaseUser = auth.currentUser
+                                        firebaseUser?.getIdToken(false)?.addOnSuccessListener { result ->
+                                            val idToken = result.token
+                                            FirebaseMessaging.getInstance().token.addOnSuccessListener { firebaseToken ->
+                                                Log.d("Facebook Sign-In", "Firebase ID Token: $idToken")
+                                                Log.d("Facebook Sign-In", "Firebase Notification Token: $firebaseToken")
+
+                                                viewModel.loginWithGoogle(idToken.toString(), firebaseToken, "facebook") { response, error ->
+                                                    if (response != null) {
+                                                        viewModel.saveTokens(response.accessToken, response.refreshToken)
+                                                        viewModel.startWebSocket(response.accessToken)
+                                                    } else {
+                                                        Log.e("Facebook Sign-In", "Facebook sign-in failed: $error")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        val exception = authTask.exception
+                                        if (exception is FirebaseAuthUserCollisionException) {
+                                            Toast.makeText(context, "This email is already linked to another account. Please log in first.", Toast.LENGTH_LONG).show()
+                                        } else {
+                                            Toast.makeText(context, "Authentication failed: ${exception?.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                        }
+
+                        override fun onCancel() {
+                            Log.d("Facebook Sign-In", "Login canceled")
+                        }
+
+                        override fun onError(error: FacebookException) {
+                            Log.e("Facebook Sign-In", "Login error: ${error.message}")
+                        }
+                    }
+
+                    Row {
+                        Text(
+                            text = "Facebook account",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text (
+                            text = if (userData?.hasFacebookAuth == true) "Linked" else "Link account",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                textDecoration = if (userData?.hasFacebookAuth == true) TextDecoration.None else TextDecoration.Underline,
+                            ),
+                            color = if (userData?.hasFacebookAuth == true) colors.Positive else colors.FontColor,
+                            modifier = if (userData?.hasFacebookAuth == true) Modifier else Modifier.clickable {
+                                val loginManager = LoginManager.getInstance()
+                                loginManager.logInWithReadPermissions(
+                                    context as ComponentActivity,
+                                    listOf("email", "public_profile")
+                                )
+                                loginManager.registerCallback(callbackManager, loginCallback)
+                            }
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Password",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text (
+                            text = if (userData?.hasPassword == true) "Change password" else "Set password",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                textDecoration = TextDecoration.Underline,
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(26.dp))
+
+                Column()
+                {
+                    Text(
+                        text = "Preferences",
+                        style = TextStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 18.sp
+                        )
                     )
-                )
 
-                Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.height(14.dp))
 
-                Text (
-                    text = "Delete account",
-                    style = TextStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        textDecoration = TextDecoration.Underline,
-                        color = colors.Error
+                    Row {
+                        Text(
+                            text = "Camera",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        CustomSwitch(
+                            isChecked = isCameraEnabled,
+                            onCheckedChange = { viewModel.toggleCamera(it) },
+                            onColor = colors.Orange100,
+                            onBorderColor = colors.Orange100,
+                            offColor = colors.Background,
+                            offBorderColor = colors.FontColor,
+                            offBorderOpacity = 0.5f,
+                            offThumbColor = colors.FontColor,
+                            offThumbOpacity = 0.2f,
+                            onThumbColor = Color.White,
+                            onThumbOpacity = 1f,
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "File manager",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        CustomSwitch(
+                            isChecked = isFileManagerEnabled,
+                            onCheckedChange = { viewModel.toggleFileManager(it) },
+                            onColor = colors.Orange100,
+                            onBorderColor = colors.Orange100,
+                            offColor = colors.Background,
+                            offBorderColor = colors.FontColor,
+                            offBorderOpacity = 0.5f,
+                            offThumbColor = colors.FontColor,
+                            offThumbOpacity = 0.2f,
+                            onThumbColor = Color.White,
+                            onThumbOpacity = 1f,
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Notifications",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        val context = LocalContext.current
+                        val activity = context as? Activity
+
+                        fun requestNotificationPermission(activity: Activity) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                when {
+                                    ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
+                                        // Permission already granted
+                                    }
+                                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS) -> {
+                                        ActivityCompat.requestPermissions(
+                                            activity,
+                                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                            1001
+                                        )
+                                    }
+                                    else -> {
+                                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            }
+                        }
+
+
+
+                        CustomSwitch(
+                            isChecked = isNotificationsEnabled,
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                            activity?.let { requestNotificationPermission(it) }
+                                        }
+                                    }
+                                    viewModel.toggleNotifications(isChecked)
+                                } else {
+                                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
+                            onColor = colors.Orange100,
+                            onBorderColor = colors.Orange100,
+                            offColor = colors.Background,
+                            offBorderColor = colors.FontColor,
+                            offBorderOpacity = 0.5f,
+                            offThumbColor = colors.FontColor,
+                            offThumbOpacity = 0.2f,
+                            onThumbColor = Color.White,
+                            onThumbOpacity = 1f,
+                            onText = "Manage"
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Location",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        CustomSwitch(
+                            isChecked = isLocationEnabled,
+                            onCheckedChange = { viewModel.toggleLocation(it) },
+                            onColor = colors.Orange100,
+                            onBorderColor = colors.Orange100,
+                            offColor = colors.Background,
+                            offBorderColor = colors.FontColor,
+                            offBorderOpacity = 0.5f,
+                            offThumbColor = colors.FontColor,
+                            offThumbOpacity = 0.2f,
+                            onThumbColor = Color.White,
+                            onThumbOpacity = 1f,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(26.dp))
+
+                Column()
+                {
+                    Text(
+                        text = "Visualization",
+                        style = TextStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 18.sp
+                        )
                     )
-                )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Dark mode",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text (
+                            text = mode.displayName,
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            ),
+                            modifier = Modifier.clickable {
+                                showModal(
+                                    ModalType.Custom { onDismiss ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = "Select mode",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 22.sp,
+                                                    textAlign = TextAlign.Center
+                                                ),
+                                                color = colors.FontColor
+                                            )
+
+                                            Spacer(modifier = Modifier.height(16.dp))
+
+                                            Button(
+                                                onClick = {
+                                                    viewModel.setMode(Mode.LIGHT)
+                                                    onDismiss()
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = colors.ModalBackground,
+                                                    contentColor = colors.FontColor
+                                                ),
+                                                border = BorderStroke(1.dp, colors.FontColor),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                            ) {
+                                                Text(
+                                                    text = Mode.LIGHT.displayName,
+                                                    style = TextStyle(
+                                                        fontFamily = Nunito,
+                                                        fontWeight = FontWeight.Black,
+                                                        fontSize = 16.sp
+                                                    ),
+                                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            Button(
+                                                onClick = {
+                                                    viewModel.setMode(Mode.DARK)
+                                                    onDismiss()
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = colors.ModalBackground,
+                                                    contentColor = colors.FontColor
+                                                ),
+                                                border = BorderStroke(1.dp, colors.FontColor),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                            ) {
+                                                Text(
+                                                    text = Mode.DARK.displayName,
+                                                    style = TextStyle(
+                                                        fontFamily = Nunito,
+                                                        fontWeight = FontWeight.Black,
+                                                        fontSize = 16.sp
+                                                    ),
+                                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            Button(
+                                                onClick = {
+                                                    viewModel.setMode(Mode.SYSTEM)
+                                                    onDismiss()
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = colors.ModalBackground,
+                                                    contentColor = colors.FontColor
+                                                ),
+                                                border = BorderStroke(1.dp, colors.FontColor),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                            ) {
+                                                Text(
+                                                    text = Mode.SYSTEM.displayName,
+                                                    style = TextStyle(
+                                                        fontFamily = Nunito,
+                                                        fontWeight = FontWeight.Black,
+                                                        fontSize = 16.sp
+                                                    ),
+                                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        )
+
+                        Spacer(Modifier.width(6.dp))
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.arrow_bottom_icon),
+                            contentDescription = "Edit Icon",
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.CenterVertically)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                Column()
+                {
+                    Text(
+                        text = "Danger zone",
+                        style = TextStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 18.sp
+                        )
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Sign out of all devices",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text(
+                            text = "Sign out everywhere",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                textDecoration = TextDecoration.Underline,
+                                color = colors.Error
+                            ),
+                            modifier = Modifier.clickable {
+                                showModal(
+                                    ModalType.Custom { onDismiss ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = "Are you sure?",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 22.sp,
+                                                    textAlign = TextAlign.Center
+                                                ),
+                                                color = colors.FontColor
+                                            )
+
+                                            Spacer(Modifier.height(14.dp))
+
+                                            Text(
+                                                text = "You will be logged out of all devices.",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 16.sp,
+                                                    textAlign = TextAlign.Center
+                                                ),
+                                                color = colors.FontColor
+                                            )
+
+                                            Spacer(Modifier.height(24.dp))
+
+                                            Row(Modifier.fillMaxWidth()){
+                                                Button(
+                                                    onClick = { onDismiss() },
+                                                    modifier = Modifier
+                                                        .align(Alignment.CenterVertically)
+                                                        .weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = colors.ModalBackground,
+                                                        contentColor = colors.FontColor
+                                                    ),
+                                                    border = BorderStroke(1.dp, colors.FontColor),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                                ) {
+                                                    Text(
+                                                        text = "Cancel",
+                                                        style = TextStyle(
+                                                            fontFamily = Nunito,
+                                                            fontWeight = FontWeight.Black,
+                                                            fontSize = 16.sp
+                                                        ),
+                                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                                    )
+                                                }
+
+                                                Spacer(Modifier.width(10.dp))
+
+                                                Button(
+                                                    onClick = {
+                                                        val refreshToken = viewModel.getRefreshToken() ?: "no_token"
+
+                                                        viewModel.logoutAll(refreshToken) { response, error ->
+                                                            if (response != null) {
+                                                                // Do nothing
+                                                            } else {
+                                                                errorMessage = error
+                                                            }
+
+                                                            navController.navigate("login") {
+                                                                popUpTo("splash") { inclusive = true }
+                                                            }
+                                                            viewModel.clearTokens()
+
+                                                            onDismiss()
+                                                        }
+                                                    },
+
+                                                    modifier = Modifier
+                                                        .align(Alignment.CenterVertically)
+                                                        .weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = colors.Orange100,
+                                                        contentColor = Color.White
+                                                    ),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                                ) {
+                                                    Text(
+                                                        text = "Confirm",
+                                                        style = TextStyle(
+                                                            fontFamily = Nunito,
+                                                            fontWeight = FontWeight.Black,
+                                                            fontSize = 16.sp
+                                                        ),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+
+                        )
+
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Account deletion",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text (
+                            text = "Delete account",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                textDecoration = TextDecoration.Underline,
+                                color = colors.Error
+                            )
+                        )
+                    }
+                }
             }
         }
     }

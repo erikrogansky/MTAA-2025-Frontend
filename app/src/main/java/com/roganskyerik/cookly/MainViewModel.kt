@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.roganskyerik.cookly.network.LoginResponse
 import com.roganskyerik.cookly.network.RegisterResponse
+import com.roganskyerik.cookly.network.UserData
 import com.roganskyerik.cookly.permissions.PreferencesManager
 import com.roganskyerik.cookly.repository.ApiRepository
+import com.roganskyerik.cookly.ui.Mode
 import com.roganskyerik.cookly.utils.TokenManager
 import com.roganskyerik.cookly.utils.WebSocketManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -93,6 +95,45 @@ class MainViewModel @Inject constructor(
     }
 
 
+    private val _userData = MutableStateFlow<UserData?>(null)
+    val userData: StateFlow<UserData?> = _userData
+
+    init {
+        fetchUserData()
+    }
+
+    private fun fetchUserData() {
+        viewModelScope.launch {
+            val result = repository.fetchUserData()
+            result.onSuccess { response ->
+                _userData.value = response
+                Log.d("MainViewModel", "Fetched user data: $response")
+            }
+            result.onFailure { error ->
+                Log.e("MainViewModel", "Failed to fetch user data: $error")
+            }
+        }
+    }
+
+    fun setMode(mode: Mode) {
+        viewModelScope.launch {
+            preferencesManager.setThemeMode(mode.value)
+            _userData.value = _userData.value?.copy(darkMode = mode.value)
+            val result = repository.updateMode(mode)
+            result.onFailure { error ->
+                Log.e("MainViewModel", "Failed to update mode: $error")
+            }
+            result.onSuccess {
+                Log.d("MainViewModel", "Updated mode to: ${mode.value}")
+            }
+        }
+    }
+
+    val themeMode = preferencesManager.themeMode.stateIn(
+        viewModelScope, SharingStarted.Lazily, Mode.SYSTEM
+    )
+
+
     // Socket implementation
     private val webSocketListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -158,6 +199,7 @@ class MainViewModel @Inject constructor(
 
     override fun onCleared() {
         // Do not close the WebSocket here, as it should be kept open until the user logs out
+        Log.d("MainViewModel", "onCleared")
     }
 
 
