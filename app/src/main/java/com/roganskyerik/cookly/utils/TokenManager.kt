@@ -31,14 +31,26 @@ class TokenManager @Inject constructor(
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
 
-        sharedPreferences = EncryptedSharedPreferences.create(
-            context,
-            PREFS_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        sharedPreferences = try {
+            EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Exception) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+            EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        }
     }
+
 
     fun saveTokens(accessToken: String, refreshToken: String) {
         sharedPreferences.edit()

@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
@@ -94,7 +95,7 @@ enum class Mode(val value: String, val displayName: String) {
 
 @Composable
 fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, callbackManager: CallbackManager, viewModel: MainViewModel = hiltViewModel()) {
-    val context = navController.context;
+    val context = navController.context
     val colors = LocalCooklyColors.current
 
     val userData by viewModel.userData.collectAsState()
@@ -104,7 +105,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
     val isNotificationsEnabled by viewModel.isNotificationsEnabled.collectAsState()
     val isCameraEnabled by viewModel.isCameraEnabled.collectAsState()
-    val isFileManagerEnabled by viewModel.isFileManagerEnabled.collectAsState()
+    //val isFileManagerEnabled by viewModel.isFileManagerEnabled.collectAsState()
     val isLocationEnabled by viewModel.isLocationEnabled.collectAsState()
 
     LaunchedEffect(userData) {
@@ -225,14 +226,104 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
                         Spacer(Modifier.weight(1f))
 
-                        Text (
-                            text = userData?.name ?: "Anonymous User",
-                            style = TextStyle(
-                                fontFamily = Nunito,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                        Row (modifier = Modifier.clickable {
+                            showModal(
+                                ModalType.Custom { onDismiss ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = "Enter your name",
+                                            style = TextStyle(
+                                                fontFamily = Nunito,
+                                                fontWeight = FontWeight.Black,
+                                                fontSize = 22.sp,
+                                                textAlign = TextAlign.Center
+                                            ),
+                                            color = colors.FontColor
+                                        )
+
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        var name by remember { mutableStateOf(userData?.name ?: "") }
+
+                                        CustomOutlinedTextField(
+                                            value = name,
+                                            onValueChange = { name = it },
+                                            label = "Name",
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textStyle = TextStyle(
+                                                fontFamily = Nunito,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            ),
+                                            singleLine = true
+                                        )
+
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        Row {
+                                            Button(
+                                                onClick = onDismiss,
+                                                modifier = Modifier.weight(1f),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = colors.Background,
+                                                    contentColor = colors.FontColor
+                                                ),
+                                                border = BorderStroke(1.dp, colors.FontColor),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                            ) {
+                                                Text(
+                                                    text = "Cancel",
+                                                    style = TextStyle(
+                                                        fontFamily = Nunito,
+                                                        fontWeight = FontWeight.Black,
+                                                        fontSize = 16.sp
+                                                    ),
+                                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(16.dp))
+
+                                            Button(
+                                                onClick = {
+                                                    viewModel.updateUser(name = name)
+                                                    onDismiss()
+                                                },
+                                                modifier = Modifier.weight(1f),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = colors.Orange100,
+                                                    contentColor = Color.White
+                                                ),
+                                                border = BorderStroke(1.dp, colors.Orange100),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                            ) {
+                                                Text(
+                                                    text = "Save",
+                                                    style = TextStyle(
+                                                        fontFamily = Nunito,
+                                                        fontWeight = FontWeight.Black,
+                                                        fontSize = 16.sp
+                                                    ),
+                                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             )
-                        )
+                        }) {
+                            Text(
+                                text = userData?.name ?: "Anonymous User",
+                                style = TextStyle(
+                                    fontFamily = Nunito,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            )
 
                         Spacer(Modifier.width(6.dp))
 
@@ -243,6 +334,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                 .size(16.dp)
                                 .align(Alignment.CenterVertically)
                         )
+                    }
                     }
 
                     Spacer(Modifier.height(14.dp))
@@ -297,7 +389,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
                         val signInLauncher = rememberLauncherForActivityResult(
                             ActivityResultContracts.StartIntentSenderForResult()) { result ->
-                            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                            if (result.resultCode == Activity.RESULT_OK) {
                                 val credential = result.data?.let { oneTapClient.getSignInCredentialFromIntent(it) }
                                 val googleToken = credential?.googleIdToken
 
@@ -344,7 +436,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                         }
                                     return@rememberLauncherForActivityResult
                                 }
-                                currentUser!!.linkWithCredential(firebaseCredential)
+                                currentUser.linkWithCredential(firebaseCredential)
                                     .addOnCompleteListener { authTask ->
                                         if (authTask.isSuccessful) {
                                             FirebaseMessaging.getInstance().token.addOnCompleteListener { tokenTask ->
@@ -445,7 +537,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                     }
                                 return
                             }
-                            currentUser!!.linkWithCredential(credential)
+                            currentUser.linkWithCredential(credential)
                                 .addOnCompleteListener { authTask ->
                                     if (authTask.isSuccessful) {
                                         val firebaseUser = auth.currentUser
@@ -538,12 +630,210 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 textDecoration = TextDecoration.Underline,
-                            )
+                            ),
+                            modifier = Modifier.clickable {
+                                showModal (
+                                    ModalType.Custom { onDismiss ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = "Enter your new password",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 22.sp,
+                                                    textAlign = TextAlign.Center
+                                                ),
+                                                color = colors.FontColor
+                                            )
+
+                                            Spacer(modifier = Modifier.height(16.dp))
+
+                                            var currentPassword by remember { mutableStateOf("") }
+                                            var newPassword by remember { mutableStateOf("") }
+                                            var confirmPassword by remember { mutableStateOf("") }
+
+                                            if (userData?.hasPassword == true) {
+
+                                                CustomOutlinedTextField(
+                                                    value = currentPassword,
+                                                    onValueChange = {
+                                                        currentPassword = it
+                                                        errorMessage = null
+                                                    },
+                                                    label = "Current Password",
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    textStyle = TextStyle(
+                                                        fontFamily = Nunito,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 16.sp
+                                                    ),
+                                                    isError = errorMessage != null,
+                                                    singleLine = true,
+                                                    visualTransformation = PasswordVisualTransformation(),
+                                                )
+
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                            }
+
+                                            CustomOutlinedTextField(
+                                                value = newPassword,
+                                                onValueChange = {
+                                                    newPassword = it
+                                                    errorMessage = null
+                                                },
+                                                label = "Password",
+                                                modifier = Modifier.fillMaxWidth(),
+                                                textStyle = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 16.sp
+                                                ),
+                                                isError = errorMessage != null,
+                                                singleLine = true,
+                                                visualTransformation = PasswordVisualTransformation()
+                                            )
+
+                                            Spacer(modifier = Modifier.height(16.dp))
+
+                                            CustomOutlinedTextField(
+                                                value = confirmPassword,
+                                                onValueChange = {
+                                                    confirmPassword = it
+                                                    errorMessage = null
+                                                },
+                                                label = "Confirm Password",
+                                                modifier = Modifier.fillMaxWidth(),
+                                                textStyle = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 16.sp
+                                                ),
+                                                isError = errorMessage != null,
+                                                singleLine = true,
+                                                visualTransformation = PasswordVisualTransformation()
+                                            )
+
+                                            if (errorMessage != null) {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = errorMessage!!,
+                                                    style = TextStyle(
+                                                        fontFamily = Nunito,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 16.sp,
+                                                        color = colors.Error
+                                                    ),
+                                                    modifier = Modifier.align(Alignment.Start).padding(start = 4.dp)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(16.dp))
+
+                                            Row {
+                                                Button(
+                                                    onClick = onDismiss,
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = colors.Background,
+                                                        contentColor = colors.FontColor
+                                                    ),
+                                                    border = BorderStroke(1.dp, colors.FontColor),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                                ) {
+                                                    Text(
+                                                        text = "Cancel",
+                                                        style = TextStyle(
+                                                            fontFamily = Nunito,
+                                                            fontWeight = FontWeight.Black,
+                                                            fontSize = 16.sp
+                                                        ),
+                                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.width(16.dp))
+
+                                                Button(
+                                                    onClick = {
+                                                        if (userData?.hasPassword == true) {
+                                                            if (currentPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
+                                                                errorMessage =
+                                                                    "All fields are required"
+                                                                return@Button
+                                                            }
+                                                            if (newPassword == currentPassword) {
+                                                                errorMessage = "New password must be different from current password"
+                                                                return@Button
+                                                            }
+                                                        } else {
+                                                            currentPassword = ""
+                                                            if (newPassword.isEmpty() || confirmPassword.isEmpty()) {
+                                                                errorMessage =
+                                                                    "All fields are required"
+                                                                return@Button
+                                                            }
+                                                        }
+                                                        if (newPassword != confirmPassword) {
+                                                            errorMessage = "Passwords do not match"
+                                                            return@Button
+                                                        }
+                                                        if (newPassword.length < 6) {
+                                                            errorMessage = "Password must be at least 8 characters"
+                                                            return@Button
+                                                        }
+                                                        if (newPassword.contains(" ")) {
+                                                            errorMessage = "Password cannot contain spaces"
+                                                            return@Button
+                                                        }
+                                                        viewModel.changePassword(currentPassword, newPassword) { response, error ->
+                                                            if (response != null) {
+                                                                onDismiss()
+                                                                if (userData?.hasPassword == true) {
+                                                                    Toast.makeText(context, "Password changed successfully", Toast.LENGTH_LONG).show()
+                                                                } else {
+                                                                    viewModel.setPassword()
+                                                                    Toast.makeText(context, "Password set successfully", Toast.LENGTH_LONG).show()
+                                                                }
+                                                            } else {
+                                                                errorMessage = error
+                                                            }
+                                                        }
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = colors.Orange100,
+                                                        contentColor = Color.White
+                                                    ),
+                                                    border = BorderStroke(1.dp, colors.Orange100),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                                ) {
+                                                    Text(
+                                                        text = "Save",
+                                                        style = TextStyle(
+                                                            fontFamily = Nunito,
+                                                            fontWeight = FontWeight.Black,
+                                                            fontSize = 16.sp
+                                                        ),
+                                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(26.dp))
+
+                val tempContext = LocalContext.current
+                val activity = tempContext as? Activity
 
                 Column()
                 {
@@ -587,34 +877,111 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
                     Spacer(Modifier.height(14.dp))
 
-                    Row {
-                        Text(
-                            text = "File manager",
-                            style = TextStyle(
-                                fontFamily = Nunito,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                        )
+//                    fun requestFilePermission(activity: Activity) {
+//                        when {
+//                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+//                                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED) {
+//                                    val intent = Intent(MediaStore.ACTION_PICK_IMAGES).apply {
+//                                        putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, 10)
+//                                    }
+//                                    activity.startActivityForResult(intent, 1003)
+//                                } else {
+//                                    ActivityCompat.requestPermissions(
+//                                        activity,
+//                                        arrayOf(Manifest.permission.READ_MEDIA_IMAGES),
+//                                        1002
+//                                    )
+//                                }
+//                            }
+//
+//                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> { // Android 13
+//                                when {
+//                                    ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED -> {
+//                                        // Permission already granted
+//                                    }
+//                                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_MEDIA_IMAGES) -> {
+//                                        ActivityCompat.requestPermissions(
+//                                            activity,
+//                                            arrayOf(Manifest.permission.READ_MEDIA_IMAGES),
+//                                            1002
+//                                        )
+//                                    }
+//                                    else -> {
+//                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+//                                            data = Uri.fromParts("package", activity.packageName, null)
+//                                        }
+//                                        activity.startActivity(intent)
+//                                    }
+//                                }
+//                            }
+//
+//                            else -> {
+//                                val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//                                    arrayOf(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
+//                                } else {
+//                                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+//                                }
+//
+//                                when {
+//                                    permissions.all { ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED } -> {
+//                                        // Permission already granted
+//                                    }
+//                                    permissions.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) } -> {
+//                                        ActivityCompat.requestPermissions(activity, permissions, 1002)
+//                                    }
+//                                    else -> {
+//                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+//                                            data = Uri.fromParts("package", activity.packageName, null)
+//                                        }
+//                                        activity.startActivity(intent)
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
 
-                        Spacer(Modifier.weight(1f))
 
-                        CustomSwitch(
-                            isChecked = isFileManagerEnabled,
-                            onCheckedChange = { viewModel.toggleFileManager(it) },
-                            onColor = colors.Orange100,
-                            onBorderColor = colors.Orange100,
-                            offColor = colors.Background,
-                            offBorderColor = colors.FontColor,
-                            offBorderOpacity = 0.5f,
-                            offThumbColor = colors.FontColor,
-                            offThumbOpacity = 0.2f,
-                            onThumbColor = Color.White,
-                            onThumbOpacity = 1f,
-                        )
-                    }
 
-                    Spacer(Modifier.height(14.dp))
+//                    Row {
+//                        Text(
+//                            text = "File manager",
+//                            style = TextStyle(
+//                                fontFamily = Nunito,
+//                                fontWeight = FontWeight.Bold,
+//                                fontSize = 16.sp
+//                            )
+//                        )
+//
+//                        Spacer(Modifier.weight(1f))
+//
+//                        CustomSwitch(
+//                            isChecked = isFileManagerEnabled,
+//                            onCheckedChange = { isChecked ->
+////                                if (isChecked) {
+////                                    activity?.let { requestFilePermission(it) }
+////                                    viewModel.toggleFileManager(isChecked)
+////                                } else {
+////                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+////                                        data = Uri.parse("package:${context.packageName}")
+////                                    }
+////                                    context.startActivity(intent)
+////                                }
+//                                viewModel.toggleFileManager(isChecked)
+//                            },
+//                            onColor = colors.Orange100,
+//                            onBorderColor = colors.Orange100,
+//                            offColor = colors.Background,
+//                            offBorderColor = colors.FontColor,
+//                            offBorderOpacity = 0.5f,
+//                            offThumbColor = colors.FontColor,
+//                            offThumbOpacity = 0.2f,
+//                            onThumbColor = Color.White,
+//                            onThumbOpacity = 1f,
+//                            onText = "Manage"
+//                        )
+//                    }
+//
+//                    Spacer(Modifier.height(14.dp))
 
                     Row {
                         Text(
@@ -627,9 +994,6 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                         )
 
                         Spacer(Modifier.weight(1f))
-
-                        val context = LocalContext.current
-                        val activity = context as? Activity
 
                         fun requestNotificationPermission(activity: Activity) {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -773,7 +1137,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
                                             Button(
                                                 onClick = {
-                                                    viewModel.setMode(Mode.LIGHT)
+                                                    viewModel.updateUser(mode = Mode.LIGHT)
                                                     onDismiss()
                                                 },
                                                 modifier = Modifier.fillMaxWidth(),
@@ -797,7 +1161,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                             Spacer(modifier = Modifier.height(12.dp))
                                             Button(
                                                 onClick = {
-                                                    viewModel.setMode(Mode.DARK)
+                                                    viewModel.updateUser(mode = Mode.DARK)
                                                     onDismiss()
                                                 },
                                                 modifier = Modifier.fillMaxWidth(),
@@ -821,7 +1185,7 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                             Spacer(modifier = Modifier.height(12.dp))
                                             Button(
                                                 onClick = {
-                                                    viewModel.setMode(Mode.SYSTEM)
+                                                    viewModel.updateUser(mode = Mode.SYSTEM)
                                                     onDismiss()
                                                 },
                                                 modifier = Modifier.fillMaxWidth(),
@@ -1027,7 +1391,115 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                 fontSize = 16.sp,
                                 textDecoration = TextDecoration.Underline,
                                 color = colors.Error
-                            )
+                            ),
+                            modifier = Modifier.clickable {
+                                showModal(
+                                    ModalType.Custom { onDismiss ->
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth(),
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = "Are you sure?",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 22.sp,
+                                                    textAlign = TextAlign.Center
+                                                ),
+                                                color = colors.FontColor
+                                            )
+
+                                            Spacer(Modifier.height(14.dp))
+
+                                            Text(
+                                                text = "This action cannot be undone.",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 16.sp,
+                                                    textAlign = TextAlign.Center
+                                                ),
+                                                color = colors.FontColor
+                                            )
+
+                                            Spacer(Modifier.height(24.dp))
+
+                                            Row(Modifier.fillMaxWidth()) {
+                                                Button(
+                                                    onClick = { onDismiss() },
+                                                    modifier = Modifier
+                                                        .align(Alignment.CenterVertically)
+                                                        .weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = colors.ModalBackground,
+                                                        contentColor = colors.FontColor
+                                                    ),
+                                                    border = BorderStroke(1.dp, colors.FontColor),
+                                                    contentPadding = PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 12.dp
+                                                    ),
+                                                ) {
+                                                    Text(
+                                                        text = "Cancel",
+                                                        style = TextStyle(
+                                                            fontFamily = Nunito,
+                                                            fontWeight = FontWeight.Black,
+                                                            fontSize = 16.sp
+                                                        ),
+                                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                                    )
+                                                }
+
+                                                Spacer(Modifier.width(10.dp))
+
+                                                Button(
+                                                    onClick = {
+                                                        viewModel.deleteAccount { response, error ->
+                                                            if (response != null) {
+                                                                onDismiss()
+                                                                navController.navigate("login") {
+                                                                    popUpTo("splash") {
+                                                                        inclusive = true
+                                                                    }
+                                                                }
+                                                                viewModel.clearTokens()
+                                                            } else {
+                                                                onDismiss()
+                                                                Toast.makeText(context, "Account deletion failed: $error", Toast.LENGTH_LONG).show()
+                                                            }
+                                                        }
+                                                    },
+
+                                                    modifier = Modifier
+                                                        .align(Alignment.CenterVertically)
+                                                        .weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = colors.Error,
+                                                        contentColor = Color.White
+                                                    ),
+                                                    contentPadding = PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 12.dp
+                                                    ),
+                                                ) {
+                                                    Text(
+                                                        text = "Confirm",
+                                                        style = TextStyle(
+                                                            fontFamily = Nunito,
+                                                            fontWeight = FontWeight.Black,
+                                                            fontSize = 16.sp
+                                                        ),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         )
                     }
                 }

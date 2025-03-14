@@ -77,9 +77,23 @@ class MainActivity : ComponentActivity() {
         } else {
             true
         }
+        val isFileManagerEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.MANAGE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
 
         lifecycleScope.launch {
             preferencesManager.setNotificationsEnabled(isNotificationsEnabled)
+            preferencesManager.setFileManagerEnabled(isFileManagerEnabled)
         }
 
         enableEdgeToEdge()
@@ -105,6 +119,7 @@ class MainActivity : ComponentActivity() {
         val handled = callbackManager.onActivityResult(requestCode, resultCode, data)
         Log.d("Facebook Sign-In", "callbackManager.onActivityResult handled: $handled")
     }
+
 }
 
 

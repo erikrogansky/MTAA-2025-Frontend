@@ -47,7 +47,8 @@ android {
 }
 
 dependencies {
-    implementation(libs.hilt.android) // ✅ Hilt runtime
+    implementation(libs.hilt.android)
+    implementation(libs.googleid) // ✅ Hilt runtime
     kapt(libs.hilt.compiler)
 
     implementation(libs.androidx.core.ktx)
@@ -86,6 +87,7 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.facebook.android.sdk)
     implementation(libs.datastore)
+    implementation(libs.googleid)
 
 
 

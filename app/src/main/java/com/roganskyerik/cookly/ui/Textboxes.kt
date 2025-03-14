@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Text
+import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
 
 @Composable
 fun CustomOutlinedTextField(
@@ -26,11 +27,11 @@ fun CustomOutlinedTextField(
     singleLine: Boolean = true,
     shape: Shape = RoundedCornerShape(50.dp),
     textStyle: TextStyle = LocalTextStyle.current,
-    borderColor: Color = MaterialTheme.colorScheme.primary,
-    focusedBorderColor: Color = MaterialTheme.colorScheme.secondary,
-    labelColor: Color = MaterialTheme.colorScheme.onSurface,
+    borderColor: Color = LocalCooklyColors.current.FontColor,
+    focusedBorderColor: Color = LocalCooklyColors.current.DarkOrange,
+    labelColor: Color = LocalCooklyColors.current.FontColor,
     isError: Boolean = false,
-    errorColor: Color = Color.Red // Define error color
+    errorColor: Color = LocalCooklyColors.current.Error
 ) {
     var isFocused by remember { mutableStateOf(false) }
 

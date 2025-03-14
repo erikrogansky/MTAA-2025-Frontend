@@ -2,6 +2,7 @@ package com.roganskyerik.cookly.repository
 
 import android.content.Context
 import com.roganskyerik.cookly.network.ApiService
+import com.roganskyerik.cookly.network.ChangePasswordRequest
 import com.roganskyerik.cookly.network.LoginRequest
 import com.roganskyerik.cookly.network.LoginResponse
 import com.roganskyerik.cookly.network.LogoutAllRequest
@@ -9,7 +10,7 @@ import com.roganskyerik.cookly.network.LogoutRequest
 import com.roganskyerik.cookly.network.OauthLoginRequest
 import com.roganskyerik.cookly.network.RegisterRequest
 import com.roganskyerik.cookly.network.RegisterResponse
-import com.roganskyerik.cookly.network.UpdateModeRequest
+import com.roganskyerik.cookly.network.UpdateUserRequest
 import com.roganskyerik.cookly.network.UserData
 import com.roganskyerik.cookly.ui.Mode
 import com.roganskyerik.cookly.utils.getDeviceId
@@ -109,11 +110,39 @@ class ApiRepository @Inject constructor(
         }
     }
 
-    suspend fun updateMode(mode: Mode): Result<Unit> {
+    suspend fun updateUser(name: String? = null, profilePicture: String? = null, mode: Mode? = null, preferences: List<String>? = null): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.updateMode(UpdateModeRequest(mode.value))
+                val response = apiService.updateUser(UpdateUserRequest(name, profilePicture, mode?.value, preferences))
                 Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.changePassword(ChangePasswordRequest(currentPassword, newPassword))
+                Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun deleteAccount(): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.deleteAccount()
+                Result.success(Unit)
             } catch (e: HttpException) {
                 val errorMessage = extractErrorMessage(e)
                 Result.failure(Exception(errorMessage))

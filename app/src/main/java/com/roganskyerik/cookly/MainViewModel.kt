@@ -115,16 +115,28 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun setMode(mode: Mode) {
+    fun setPassword() {
         viewModelScope.launch {
-            preferencesManager.setThemeMode(mode.value)
-            _userData.value = _userData.value?.copy(darkMode = mode.value)
-            val result = repository.updateMode(mode)
-            result.onFailure { error ->
-                Log.e("MainViewModel", "Failed to update mode: $error")
+            _userData.value = _userData.value?.copy(hasPassword = true)
+        }
+    }
+
+    fun updateUser(name: String? = null, profilePicture: String? = null, mode: Mode? = null, preferences: List<String>? = null) {
+        viewModelScope.launch {
+            if (mode != null) {
+                preferencesManager.setThemeMode(mode.value)
+                _userData.value = _userData.value?.copy(darkMode = mode.value)
+            }
+            if (name != null) {
+                _userData.value = _userData.value?.copy(name = name)
+            }
+
+            val result = repository.updateUser(name, profilePicture, mode, preferences)
+            result.onFailure {
+
             }
             result.onSuccess {
-                Log.d("MainViewModel", "Updated mode to: ${mode.value}")
+
             }
         }
     }
@@ -132,6 +144,22 @@ class MainViewModel @Inject constructor(
     val themeMode = preferencesManager.themeMode.stateIn(
         viewModelScope, SharingStarted.Lazily, Mode.SYSTEM
     )
+
+    fun changePassword(currentPassword: String, newPassword: String, onResult: (Unit?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.changePassword(currentPassword, newPassword)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun deleteAccount(onResult: (Unit?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.deleteAccount()
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
 
 
     // Socket implementation
@@ -241,9 +269,9 @@ class MainViewModel @Inject constructor(
         viewModelScope, SharingStarted.Lazily, false
     )
 
-    val isFileManagerEnabled = preferencesManager.isFileManagerEnabled.stateIn(
-        viewModelScope, SharingStarted.Lazily, false
-    )
+//    val isFileManagerEnabled = preferencesManager.isFileManagerEnabled.stateIn(
+//        viewModelScope, SharingStarted.Lazily, false
+//    )
 
     val isLocationEnabled = preferencesManager.isLocationEnabled.stateIn(
         viewModelScope, SharingStarted.Lazily, false
@@ -261,11 +289,11 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun toggleFileManager(enabled: Boolean) {
-        viewModelScope.launch {
-            preferencesManager.setFileManagerEnabled(enabled)
-        }
-    }
+//    fun toggleFileManager(enabled: Boolean) {
+//        viewModelScope.launch {
+//            preferencesManager.setFileManagerEnabled(enabled)
+//        }
+//    }
 
     fun toggleLocation(enabled: Boolean) {
         viewModelScope.launch {

@@ -1,8 +1,10 @@
 package com.roganskyerik.cookly.network
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
 data class LoginRequest(val email: String, val password: String, val firebaseToken: String, val deviceId: String)
 data class LoginResponse(val accessToken: String, val refreshToken: String)
@@ -33,7 +35,8 @@ data class RefreshTokenResponse(val accessToken: String)
 
 data class UserData(val name: String, val hasPassword: Boolean, val hasFacebookAuth: Boolean, val hasGoogleAuth: Boolean, val darkMode: String)
 
-data class UpdateModeRequest(val mode: String)
+data class UpdateUserRequest(val name: String? = null, val profilePicture: String? = null, val mode: String? = null, val preferences: List<String>? = null)
+data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
 
 interface ApiService {
     @POST("auth/login")
@@ -57,6 +60,12 @@ interface ApiService {
     @GET("users/get-data")
     suspend fun fetchUserData(): UserData
 
-    @POST("users/update-mode")
-    suspend fun updateMode(@Body request: UpdateModeRequest)
+    @PUT("users/update")
+    suspend fun updateUser(@Body request: UpdateUserRequest)
+
+    @PUT("users/change-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest)
+
+    @DELETE("users/delete")
+    suspend fun deleteAccount()
 }
