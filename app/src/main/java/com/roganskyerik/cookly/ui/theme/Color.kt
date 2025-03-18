@@ -23,6 +23,12 @@ data class CooklyColors(
 
     val PureColor: Color,
     val PureOpositeColor: Color,
+
+    val LightOutline: Color,
+
+    val AI: Color,
+
+    val LightGray: Color,
 )
 
 // Light theme colors
@@ -44,6 +50,12 @@ val LightCooklyColors = CooklyColors(
 
     PureColor = Color(0xFFFFFFFF),
     PureOpositeColor = Color(0xFF000000),
+
+    LightOutline = Color(0xFFDEDEDE),
+
+    AI = Color(0xFF8900A7),
+
+    LightGray = Color(0xFFF5F5F5),
 )
 
 // Dark theme colors
@@ -65,4 +77,10 @@ val DarkCooklyColors = CooklyColors(
 
     PureColor = Color(0xFF000000),
     PureOpositeColor = Color(0xFFFFFFFF),
+
+    LightOutline = Color(0xFFDEDEDE),
+
+    AI = Color(0xFF8900A7),
+
+    LightGray = Color(0xFFF5F5F5),
 )

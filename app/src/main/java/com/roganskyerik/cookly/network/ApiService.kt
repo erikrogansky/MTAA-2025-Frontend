@@ -1,5 +1,6 @@
 package com.roganskyerik.cookly.network
 
+import com.roganskyerik.cookly.ui.Tag
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -68,4 +69,7 @@ interface ApiService {
 
     @DELETE("users/delete")
     suspend fun deleteAccount()
+
+    @GET("tags/get-all")
+    suspend fun fetchTags(): List<Tag>
 }

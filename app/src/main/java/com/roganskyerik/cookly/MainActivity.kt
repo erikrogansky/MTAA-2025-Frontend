@@ -212,7 +212,7 @@ fun AppNavigation(viewModel: MainViewModel, modalManagerViewModel: ModalManagerV
                 composable("register") { RegistrationScreen(navController, viewModel, callbackManager) }
                 composable("home") { HomeScreen(navController) }
                 composable("discover") { DiscoverScreen(navController) }
-                composable("create") { CreateScreen(navController) }
+                composable("create") { CreateScreen(navController, modalManagerViewModel::showModal, viewModel) }
                 composable("account") { AccountScreen(navController, modalManagerViewModel::showModal, callbackManager) }
             }
         }

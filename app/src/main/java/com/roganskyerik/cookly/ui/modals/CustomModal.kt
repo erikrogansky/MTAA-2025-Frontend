@@ -1,4 +1,4 @@
-package com.roganskyerik.cookly.ui
+package com.roganskyerik.cookly.ui.modals
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,7 +20,7 @@ fun CustomModal(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState(
-        initialValue = if (showModal) ModalBottomSheetValue.Expanded else ModalBottomSheetValue.Hidden
+        initialValue = if (showModal) ModalBottomSheetValue.Expanded else ModalBottomSheetValue.Hidden, skipHalfExpanded = true
     )
 
     val colors = LocalCooklyColors.current
@@ -52,6 +52,7 @@ fun CustomModal(
                     .fillMaxWidth()
                     .padding(vertical = 16.dp, horizontal = 28.dp)
                     .navigationBarsPadding()
+                    .imePadding()
             ) {
                 Box(
                     modifier = Modifier

@@ -13,6 +13,7 @@ import com.roganskyerik.cookly.network.RegisterResponse
 import com.roganskyerik.cookly.network.UpdateUserRequest
 import com.roganskyerik.cookly.network.UserData
 import com.roganskyerik.cookly.ui.Mode
+import com.roganskyerik.cookly.ui.Tag
 import com.roganskyerik.cookly.utils.getDeviceId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -143,6 +144,20 @@ class ApiRepository @Inject constructor(
             try {
                 apiService.deleteAccount()
                 Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun fetchTags(): Result<List<Tag>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.fetchTags()
+                Result.success(response)
             } catch (e: HttpException) {
                 val errorMessage = extractErrorMessage(e)
                 Result.failure(Exception(errorMessage))

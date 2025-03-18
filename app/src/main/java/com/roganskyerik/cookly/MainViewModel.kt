@@ -9,6 +9,7 @@ import com.roganskyerik.cookly.network.UserData
 import com.roganskyerik.cookly.permissions.PreferencesManager
 import com.roganskyerik.cookly.repository.ApiRepository
 import com.roganskyerik.cookly.ui.Mode
+import com.roganskyerik.cookly.ui.Tag
 import com.roganskyerik.cookly.utils.TokenManager
 import com.roganskyerik.cookly.utils.WebSocketManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -156,6 +157,16 @@ class MainViewModel @Inject constructor(
     fun deleteAccount(onResult: (Unit?, String?) -> Unit) {
         viewModelScope.launch {
             val result = repository.deleteAccount()
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+
+    // Tags
+    fun fetchTags(onResult: (List<Tag>?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.fetchTags()
             result.onSuccess { response -> onResult(response, null) }
             result.onFailure { error -> onResult(null, error.message) }
         }
