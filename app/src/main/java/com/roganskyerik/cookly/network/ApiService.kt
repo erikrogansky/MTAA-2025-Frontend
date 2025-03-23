@@ -1,11 +1,14 @@
 package com.roganskyerik.cookly.network
 
 import com.roganskyerik.cookly.ui.Tag
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 
 data class LoginRequest(val email: String, val password: String, val firebaseToken: String, val deviceId: String)
 data class LoginResponse(val accessToken: String, val refreshToken: String)
@@ -34,10 +37,12 @@ data class LogoutAllRequest(val refreshToken: String)
 data class RefreshTokenRequest(val refreshToken: String, val deviceId: String)
 data class RefreshTokenResponse(val accessToken: String)
 
-data class UserData(val name: String, val hasPassword: Boolean, val hasFacebookAuth: Boolean, val hasGoogleAuth: Boolean, val darkMode: String)
+data class UserData(val name: String, val hasPassword: Boolean, val hasFacebookAuth: Boolean, val hasGoogleAuth: Boolean, val darkMode: String, val profilePictureUrl: String)
 
 data class UpdateUserRequest(val name: String? = null, val profilePicture: String? = null, val mode: String? = null, val preferences: List<String>? = null)
 data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
+
+data class ChangePictureRequest(val picture: String)
 
 interface ApiService {
     @POST("auth/login")
@@ -69,6 +74,10 @@ interface ApiService {
 
     @DELETE("users/delete")
     suspend fun deleteAccount()
+
+    @Multipart
+    @POST("users/change-picture")
+    suspend fun changePicture(@Part file: MultipartBody.Part)
 
     @GET("tags/get-all")
     suspend fun fetchTags(): List<Tag>

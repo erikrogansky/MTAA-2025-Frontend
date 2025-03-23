@@ -4,8 +4,10 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -46,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -58,8 +61,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.facebook.CallbackManager
 import com.facebook.FacebookCallback
 import com.facebook.FacebookException
@@ -79,6 +85,7 @@ import com.roganskyerik.cookly.ui.components.RotatingLoader
 import com.roganskyerik.cookly.ui.modals.ModalType
 import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
 import com.roganskyerik.cookly.ui.theme.Nunito
+import java.io.File
 
 enum class Mode(val value: String, val displayName: String) {
     LIGHT("n", "Light Mode"),
@@ -132,12 +139,15 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                     modifier = Modifier
                         .fillMaxWidth(),
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.user_icon_placeholder),
+                    AsyncImage(
+                        model = userData?.profilePictureUrl,
                         contentDescription = "User Icon",
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(50.dp)
-                            .align(Alignment.CenterVertically)
+                            .clip(CircleShape)
+                            .align(Alignment.CenterVertically),
+
                     )
 
                     Spacer(Modifier.width(10.dp))
@@ -358,7 +368,110 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 textDecoration = TextDecoration.Underline,
-                            )
+                            ),
+                            modifier = Modifier.clickable {
+                                showModal(
+                                    ModalType.Custom { onDismiss ->
+                                        var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+                                        val galleryLauncher = rememberLauncherForActivityResult(
+                                            contract = ActivityResultContracts.GetContent()
+                                        ) { uri: Uri? ->
+                                            uri?.let { selectedImageUri = it }
+                                        }
+
+                                        val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
+                                        val cameraLauncher = rememberLauncherForActivityResult(
+                                            contract = ActivityResultContracts.TakePicture()
+                                        ) { success ->
+                                            if (success) {
+                                                selectedImageUri = cameraImageUri.value
+                                            }
+                                        }
+
+                                        val context = LocalContext.current
+
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Text("Current Profile Picture")
+                                            AsyncImage(
+                                                model = userData?.profilePictureUrl,
+                                                contentDescription = "Current profile picture",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .size(120.dp)
+                                                    .clip(CircleShape)
+                                                    .border(2.dp, Color.Gray, CircleShape)
+                                            )
+
+                                            selectedImageUri?.let {
+                                                Text("Preview New Picture")
+                                                Image(
+                                                    painter = rememberAsyncImagePainter(it),
+                                                    contentDescription = "Selected profile picture",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .size(120.dp)
+                                                        .clip(CircleShape)
+                                                        .border(2.dp, Color.Green, CircleShape)
+                                                )
+
+                                            }
+
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(onClick = { galleryLauncher.launch("image/*") }) {
+                                                    Text("Choose from Gallery")
+                                                }
+
+                                                Button(onClick = {
+                                                    val uri = FileProvider.getUriForFile(
+                                                        context,
+                                                        "${context.packageName}.fileprovider",
+                                                        File.createTempFile("temp_image", ".jpg", context.cacheDir)
+                                                    )
+                                                    cameraImageUri.value = uri
+                                                    cameraLauncher.launch(uri)
+                                                }) {
+                                                    Text("Take Photo")
+                                                }
+                                            }
+
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = {
+                                                        selectedImageUri?.let { uri ->
+                                                            viewModel.changePicture(uri, context) { response, error ->
+                                                                if (response != null) {
+                                                                    Toast.makeText(context, "Profile picture changed successfully", Toast.LENGTH_LONG).show()
+                                                                } else {
+                                                                    Log.e("ProfileEditor", "Failed to change profile picture: $error")
+                                                                }
+                                                            }
+                                                            Log.d("ProfileEditor", "Selected image to save: $uri")
+                                                            onDismiss()
+                                                        }
+                                                        selectedImageUri = null
+                                                    },
+                                                    enabled = selectedImageUri != null
+                                                ) {
+                                                    Text("Save")
+                                                }
+
+                                                Button(
+                                                    onClick = { selectedImageUri = null },
+                                                    enabled = selectedImageUri != null
+                                                ) {
+                                                    Text("Cancel")
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         )
                     }
 
@@ -860,9 +973,42 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
                         Spacer(Modifier.weight(1f))
 
+                        fun requestCameraPermission(activity: Activity) {
+                            when {
+                                ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
+                                    // Already granted
+                                }
+                                ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA) -> {
+                                    ActivityCompat.requestPermissions(
+                                        activity,
+                                        arrayOf(Manifest.permission.CAMERA),
+                                        1002
+                                    )
+                                }
+                                else -> {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            }
+                        }
+
                         CustomSwitch(
                             isChecked = isCameraEnabled,
-                            onCheckedChange = { viewModel.toggleCamera(it) },
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                                        activity?.let { requestCameraPermission(it) }
+                                    }
+                                    viewModel.toggleCamera(isChecked)
+                                } else {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
                             onColor = colors.Orange100,
                             onBorderColor = colors.Orange100,
                             offColor = colors.Background,

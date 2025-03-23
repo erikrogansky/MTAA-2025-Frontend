@@ -1,8 +1,10 @@
 package com.roganskyerik.cookly.repository
 
 import android.content.Context
+import android.net.Uri
 import com.roganskyerik.cookly.network.ApiService
 import com.roganskyerik.cookly.network.ChangePasswordRequest
+import com.roganskyerik.cookly.network.ChangePictureRequest
 import com.roganskyerik.cookly.network.LoginRequest
 import com.roganskyerik.cookly.network.LoginResponse
 import com.roganskyerik.cookly.network.LogoutAllRequest
@@ -17,8 +19,13 @@ import com.roganskyerik.cookly.ui.Tag
 import com.roganskyerik.cookly.utils.getDeviceId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import retrofit2.HttpException
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 
 class ApiRepository @Inject constructor(
@@ -152,6 +159,38 @@ class ApiRepository @Inject constructor(
             }
         }
     }
+
+    suspend fun changePicture(imageUri: Uri, context: Context): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val contentResolver = context.contentResolver
+                val inputStream = contentResolver.openInputStream(imageUri)
+                val tempFile = File.createTempFile("upload", ".jpg", context.cacheDir)
+
+                inputStream?.use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                val requestBody = tempFile
+                    .asRequestBody("image/jpeg".toMediaTypeOrNull())
+
+                val filePart = MultipartBody.Part.createFormData("file", tempFile.name, requestBody)
+
+                apiService.changePicture(filePart)
+
+                Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+
 
     suspend fun fetchTags(): Result<List<Tag>> {
         return withContext(Dispatchers.IO) {

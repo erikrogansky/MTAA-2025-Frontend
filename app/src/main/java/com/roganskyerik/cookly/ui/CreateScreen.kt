@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -103,6 +104,7 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
     var details by remember { mutableStateOf<RecipeDetails?>(null) }
     var tags by remember { mutableStateOf<List<Tag>>(emptyList()) }
     var ingredients by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
+    var instructions by remember { mutableStateOf<List<String>>(emptyList()) }
 
     Column(
         modifier = Modifier
@@ -2265,6 +2267,305 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Section(
+            title = "Preparation"
+        ) {
+            for ((index, instruction) in instructions.withIndex()) {
+                InstructionItem(
+                    instruction = instruction,
+                    number = index + 1,
+                    onClick = {
+                        showModal(
+                            ModalType.Custom { onDismiss ->
+                                val modalError = remember { mutableStateOf("") }
+                                val modalInstruction = remember { mutableStateOf(instruction) }
+
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Add instruction",
+                                        style = TextStyle(
+                                            fontFamily = Nunito,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 22.sp,
+                                            textAlign = TextAlign.Center
+                                        ),
+                                        color = colors.FontColor
+                                    )
+
+                                    Spacer(Modifier.height(24.dp))
+
+                                    CustomMultilineTextField(
+                                        value = modalInstruction.value,
+                                        onValueChange = { modalInstruction.value = it },
+                                        label = "Instruction",
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textStyle = TextStyle(
+                                            fontFamily = Nunito,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp
+                                        ),
+                                        borderColor = colors.DarkOrange,
+                                        focusedBorderColor = colors.Orange100,
+                                        isError = modalError.value != "",
+                                    )
+
+                                    Spacer(Modifier.height(14.dp))
+
+                                    if (modalError.value != "") {
+                                        Text(
+                                            text = modalError.value,
+                                            style = TextStyle(
+                                                fontFamily = Nunito,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = colors.Error
+                                            ),
+                                            modifier = Modifier
+                                                .padding(start = 4.dp)
+                                                .align(Alignment.Start),
+
+                                            )
+                                    }
+
+                                    Spacer(Modifier.height(24.dp))
+
+                                    Row {
+                                        Button(
+                                            onClick = {
+                                                instructions = instructions.filter { it != instruction }
+                                                onDismiss()
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.CenterVertically)
+                                                .weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = colors.ModalBackground,
+                                                contentColor = colors.Error
+                                            ),
+                                            border = BorderStroke(1.dp, colors.Error),
+                                            contentPadding = PaddingValues(
+                                                horizontal = 12.dp,
+                                                vertical = 12.dp
+                                            ),
+                                        ) {
+                                            Text(
+                                                text = "Delete instruction",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 16.sp
+                                                ),
+                                                modifier = Modifier.align(Alignment.CenterVertically)
+                                            )
+                                        }
+
+                                        Spacer(Modifier.width(10.dp))
+
+                                        Button(
+                                            onClick = {
+                                                if (modalInstruction.value == "") {
+                                                    modalError.value = "Please fill out all the fields"
+                                                } else {
+                                                    instructions = instructions.map {
+                                                        if (it == instruction) {
+                                                            modalInstruction.value
+                                                        } else {
+                                                            it
+                                                        }
+                                                    }
+                                                    onDismiss()
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.CenterVertically)
+                                                .weight(1f),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = colors.Orange100,
+                                                contentColor = Color.White
+                                            ),
+                                            contentPadding = PaddingValues(
+                                                horizontal = 12.dp,
+                                                vertical = 12.dp
+                                            ),
+                                        ) {
+                                            Text(
+                                                text = "Save instruction",
+                                                style = TextStyle(
+                                                    fontFamily = Nunito,
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 16.sp
+                                                ),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            Button(
+                onClick = {
+                    showModal(
+                        ModalType.Custom { onDismiss ->
+                            val modalError = remember { mutableStateOf("") }
+                            val modalInstruction = remember { mutableStateOf("") }
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Add instruction",
+                                    style = TextStyle(
+                                        fontFamily = Nunito,
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 22.sp,
+                                        textAlign = TextAlign.Center
+                                    ),
+                                    color = colors.FontColor
+                                )
+
+                                Spacer(Modifier.height(24.dp))
+
+                                CustomMultilineTextField(
+                                    value = modalInstruction.value,
+                                    onValueChange = { modalInstruction.value = it },
+                                    label = "Instruction",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textStyle = TextStyle(
+                                        fontFamily = Nunito,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    ),
+                                    borderColor = colors.DarkOrange,
+                                    focusedBorderColor = colors.Orange100,
+                                    isError = modalError.value != "",
+                                )
+
+                                Spacer(Modifier.height(14.dp))
+
+                                if (modalError.value != "") {
+                                    Text(
+                                        text = modalError.value,
+                                        style = TextStyle(
+                                            fontFamily = Nunito,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = colors.Error
+                                        ),
+                                        modifier = Modifier
+                                            .padding(start = 4.dp)
+                                            .align(Alignment.Start),
+
+                                        )
+                                }
+
+                                Spacer(Modifier.height(24.dp))
+
+                                Row {
+                                    Button(
+                                        onClick = { onDismiss() },
+                                        modifier = Modifier
+                                            .align(Alignment.CenterVertically)
+                                            .weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = colors.ModalBackground,
+                                            contentColor = colors.FontColor
+                                        ),
+                                        border = BorderStroke(1.dp, colors.LightOutline),
+                                        contentPadding = PaddingValues(
+                                            horizontal = 12.dp,
+                                            vertical = 12.dp
+                                        ),
+                                    ) {
+                                        Text(
+                                            text = "Cancel",
+                                            style = TextStyle(
+                                                fontFamily = Nunito,
+                                                fontWeight = FontWeight.Black,
+                                                fontSize = 16.sp
+                                            ),
+                                            modifier = Modifier.align(Alignment.CenterVertically)
+                                        )
+                                    }
+
+                                    Spacer(Modifier.width(10.dp))
+
+                                    Button(
+                                        onClick = {
+                                            if (modalInstruction.value == "") {
+                                                modalError.value = "Please fill out all the fields"
+                                            } else {
+                                                instructions = instructions + modalInstruction.value
+                                                onDismiss()
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.CenterVertically)
+                                            .weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = colors.Orange100,
+                                            contentColor = Color.White
+                                        ),
+                                        contentPadding = PaddingValues(
+                                            horizontal = 12.dp,
+                                            vertical = 12.dp
+                                        ),
+                                    ) {
+                                        Text(
+                                            text = "Save instruction",
+                                            style = TextStyle(
+                                                fontFamily = Nunito,
+                                                fontWeight = FontWeight.Black,
+                                                fontSize = 16.sp
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.Background,
+                    contentColor = colors.FontColor
+                ),
+                border = BorderStroke(1.dp, colors.LightOutline),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                shape = RoundedCornerShape(50.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.plus_icon),
+                    contentDescription = "Add",
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Text(
+                    text = "Add instruction",
+                    style = TextStyle(
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 16.sp
+                    )
+                )
+            }
+        }
     }
 }
 
@@ -2372,5 +2673,48 @@ fun IngredientItem (
                 color = colors.FontColor.copy(0.75f)
             )
         }
+    }
+}
+
+@Composable
+fun InstructionItem(instruction: String, number: Number, onClick: () -> Unit = {}) {
+    val colors = LocalCooklyColors.current
+
+    Row(
+        modifier = Modifier
+            .then(if (onClick != {}) Modifier.clickable { onClick() } else Modifier)
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = "$number",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Black,
+                fontSize = 18.sp
+            ),
+            color = colors.FontColor
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Box(
+            modifier = Modifier
+                .background(colors.Orange100, shape = RoundedCornerShape(50.dp))
+                .width(2.dp)
+                .height(28.dp)
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Text(
+            text = instruction,
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp
+            ),
+            color = colors.FontColor
+        )
     }
 }

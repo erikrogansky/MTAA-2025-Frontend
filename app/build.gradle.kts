@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.facebook.android.sdk)
     implementation(libs.datastore)
     implementation(libs.googleid)
+    implementation(libs.coil.compose)
 
 
 

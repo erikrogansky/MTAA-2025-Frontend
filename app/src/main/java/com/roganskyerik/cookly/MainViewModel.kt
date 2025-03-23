@@ -1,5 +1,7 @@
 package com.roganskyerik.cookly
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -107,14 +109,15 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val result = repository.fetchUserData()
             result.onSuccess { response ->
-                _userData.value = response
-                Log.d("MainViewModel", "Fetched user data: $response")
+                val urlWithTimestamp = response.profilePictureUrl?.let { "$it?ts=${System.currentTimeMillis()}" }
+                _userData.value = response.copy(profilePictureUrl = urlWithTimestamp ?: "")
             }
             result.onFailure { error ->
-                Log.e("MainViewModel", "Failed to fetch user data: $error")
+                // handle error if needed
             }
         }
     }
+
 
     fun setPassword() {
         viewModelScope.launch {
@@ -158,6 +161,29 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val result = repository.deleteAccount()
             result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun changePicture(picture: Uri, context: Context, onResult: (Unit?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.changePicture(picture, context)
+            result.onSuccess { response ->
+                val currentUrl = _userData.value?.profilePictureUrl
+
+                val cleanUrl = currentUrl
+                    ?.replace(Regex("[?&]ts=\\d+"), "")
+                    ?.removeSuffix("?")
+                    ?.removeSuffix("&")
+
+                val updatedUrl = if (cleanUrl?.contains('?') == true) {
+                    "$cleanUrl&ts=${System.currentTimeMillis()}"
+                } else {
+                    "$cleanUrl?ts=${System.currentTimeMillis()}"
+                }
+
+                _userData.value = _userData.value?.copy(profilePictureUrl = updatedUrl)
+            }
             result.onFailure { error -> onResult(null, error.message) }
         }
     }
