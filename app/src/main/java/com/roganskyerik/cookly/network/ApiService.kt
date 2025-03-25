@@ -42,8 +42,6 @@ data class UserData(val name: String, val hasPassword: Boolean, val hasFacebookA
 data class UpdateUserRequest(val name: String? = null, val profilePicture: String? = null, val mode: String? = null, val preferences: List<String>? = null)
 data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
 
-data class ChangePictureRequest(val picture: String)
-
 interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
@@ -81,4 +79,18 @@ interface ApiService {
 
     @GET("tags/get-all")
     suspend fun fetchTags(): List<Tag>
+
+    @Multipart
+    @POST("recipes/create")
+    suspend fun createRecipe(
+        @Part title: MultipartBody.Part,
+        @Part tags: MultipartBody.Part,
+        @Part ingredients: MultipartBody.Part,
+        @Part instructions: MultipartBody.Part,
+        @Part isPublic: MultipartBody.Part,
+        @Part coverPhoto: MultipartBody.Part?,
+        @Part images: List<MultipartBody.Part>,
+        @Part description: MultipartBody.Part,
+        @Part details: MultipartBody.Part
+    )
 }

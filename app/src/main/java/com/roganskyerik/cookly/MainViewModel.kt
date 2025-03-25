@@ -11,6 +11,7 @@ import com.roganskyerik.cookly.network.UserData
 import com.roganskyerik.cookly.permissions.PreferencesManager
 import com.roganskyerik.cookly.repository.ApiRepository
 import com.roganskyerik.cookly.ui.Mode
+import com.roganskyerik.cookly.ui.Recipe
 import com.roganskyerik.cookly.ui.Tag
 import com.roganskyerik.cookly.utils.TokenManager
 import com.roganskyerik.cookly.utils.WebSocketManager
@@ -335,6 +336,18 @@ class MainViewModel @Inject constructor(
     fun toggleLocation(enabled: Boolean) {
         viewModelScope.launch {
             preferencesManager.setLocationEnabled(enabled)
+        }
+    }
+
+
+    // Recipe methods
+    fun createRecipe(recipe: Recipe, context: Context, onResult: (Unit?, String?) -> Unit) {
+        Log.d("MainViewModel", recipe.toString())
+
+        viewModelScope.launch {
+            val result = repository.createRecipe(recipe, context)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
         }
     }
 }

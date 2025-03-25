@@ -1,12 +1,17 @@
 package com.roganskyerik.cookly.ui
 
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +33,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -41,25 +50,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.roganskyerik.cookly.MainViewModel
 import com.roganskyerik.cookly.R
 import com.roganskyerik.cookly.ui.modals.ModalType
@@ -92,12 +106,27 @@ data class Ingredient(
     val quantity: String,
 )
 
+data class Recipe(
+    val title: String,
+    val description: String,
+    val prepTime: Float,
+    val difficulty: String,
+    val servings: Int,
+    val calories: Int,
+    val tags: List<String>,
+    val ingredients: List<Ingredient>,
+    val instructions: List<String>,
+    val isPublic: Boolean,
+    val coverPhoto: Uri,
+    val photos: List<Uri>
+)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, viewModel: MainViewModel = hiltViewModel()) {
     val colors = LocalCooklyColors.current
 
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf("") }
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -105,11 +134,14 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
     var tags by remember { mutableStateOf<List<Tag>>(emptyList()) }
     var ingredients by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
     var instructions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isPublic by remember { mutableStateOf(false) }
+
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(top = 16.dp, start = 16.dp, end = 16.dp)
             .background(colors.Background),
         verticalArrangement = Arrangement.Top,
     ) {
@@ -124,6 +156,11 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        Column (
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState)
+        ) {
         Section("About") {
             if (title != "" && description != "") {
                 Column(
@@ -2113,9 +2150,9 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
                                         )
                                 }
-                                
+
                                 Spacer(Modifier.height(24.dp))
-                                
+
                                 Row {
                                     Button(
                                         onClick = { onDismiss() },
@@ -2139,9 +2176,9 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                                             modifier = Modifier.align(Alignment.CenterVertically)
                                         )
                                     }
-                                    
+
                                     Spacer(Modifier.width(10.dp))
-                                    
+
                                     Button(
                                         onClick = {
                                             if (modalName.value == "" || modalQuantity.value == "") {
@@ -2175,7 +2212,7 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                                         )
                                     }
                                 }
-                                
+
                             } else {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = {
@@ -2566,6 +2603,266 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+            val imageUris = remember { mutableStateListOf<Uri>() }
+            var coverPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+            val imagePickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetMultipleContents()
+            ) { uris: List<Uri> ->
+                val availableSlots = 10 - imageUris.size
+                if (availableSlots > 0) {
+                    val toAdd = uris.take(availableSlots)
+                    imageUris.addAll(toAdd)
+                    if (coverPhotoUri == null && toAdd.isNotEmpty()) {
+                        coverPhotoUri = toAdd.first()
+                    }
+                }
+            }
+
+            Section(title = "Photos") {
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .size(160.dp)
+                            .border(1.dp, colors.LightOutline, shape = RoundedCornerShape(10.dp))
+                            .clickable {
+                                imagePickerLauncher.launch("image/*")
+                            },
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.plus_icon),
+                            contentDescription = "Add photo",
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.CenterHorizontally)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Add photos",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp
+                            ),
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    imageUris.forEach { uri ->
+                        Box(
+                            modifier = Modifier
+                                .size(160.dp)
+                                .padding(end = 12.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                        ) {
+                            AsyncImage(
+                                model = uri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                            )
+
+                            // Trash icon (top right)
+                            Image(
+                                painter = painterResource(id = R.drawable.logout_icon),
+                                contentDescription = "Delete photo",
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .align(Alignment.TopEnd)
+                                    .clickable {
+                                        imageUris.remove(uri)
+                                        if (coverPhotoUri == uri) {
+                                            coverPhotoUri = imageUris.firstOrNull()
+                                        }
+                                    }
+                                    .padding(6.dp)
+                            )
+
+                            // Cover selector (top left)
+                            Image(
+                                painter = painterResource(
+                                    id = if (coverPhotoUri == uri)
+                                        R.drawable.icon_bolt
+                                    else
+                                        R.drawable.plus_circle_icon
+                                ),
+                                contentDescription = "Select cover photo",
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .align(Alignment.TopStart)
+                                    .clickable {
+                                        coverPhotoUri = uri
+                                    }
+                                    .padding(6.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Section(
+                title = "Publicity"
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(color = colors.LightGray)
+                        .clip(RoundedCornerShape(16.dp))
+                        .padding(4.dp),
+                ) {
+                    Button(
+                        onClick = { isPublic = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isPublic) colors.Background else colors.LightGray,
+                            contentColor = colors.FontColor
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 10.dp, horizontal = 8.dp), // Adjusted horizontal padding
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.icon_public),
+                            contentDescription = "Public Recipe",
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Public Recipe",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp
+                            )
+                        )
+                    }
+
+                    Button(
+                        onClick = { isPublic = false },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (!isPublic) colors.Background else colors.LightGray,
+                            contentColor = colors.FontColor
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 10.dp, horizontal = 8.dp), // Adjusted horizontal padding
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.icon_private),
+                            contentDescription = "Private Recipe",
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Private Recipe",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp
+                            )
+                        )
+                    }
+                }
+            }
+
+            val context = LocalContext.current
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (errorMessage != "") {
+                Text(
+                    text = errorMessage,
+                    style = TextStyle(
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = colors.Error
+                    ),
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .align(Alignment.Start),
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+
+            Button(
+                onClick = {
+                    if (title == "") {
+                        errorMessage = "Please fill out the title"
+                        return@Button
+                    }
+                    if (tags.isEmpty()) {
+                        errorMessage = "Please select at least one tag"
+                        return@Button
+                    }
+                    if (ingredients.isEmpty()) {
+                        errorMessage = "Please add at least one ingredient"
+                        return@Button
+                    }
+                    if (instructions.isEmpty()) {
+                        errorMessage = "Please add at least one instruction"
+                        return@Button
+                    }
+
+                    val recipe = Recipe(
+                        title = title,
+                        description = description,
+                        ingredients = ingredients,
+                        instructions = instructions,
+                        isPublic = isPublic,
+                        coverPhoto = coverPhotoUri ?: Uri.EMPTY,
+                        photos = imageUris,
+                        prepTime = details?.prepTime ?: 0f,
+                        difficulty = details?.difficulty.toString(),
+                        servings = details?.servings ?: 0,
+                        calories = details?.servings ?: 0,
+                        tags = tags.map { it.name }
+                    )
+
+                    viewModel.createRecipe(recipe, context) { response, error ->
+                        if (error != null) {
+                            errorMessage = error
+                        } else {
+                            navController.popBackStack()
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.Orange100,
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                shape = RoundedCornerShape(50.dp)
+            ) {
+                Text(
+                    text = "Create Recipe",
+                    style = TextStyle(
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 16.sp
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
 
@@ -2596,8 +2893,8 @@ fun TagItem(tag: Tag, isClickable: Boolean, isSelected: Boolean, onToggle: () ->
         modifier = Modifier
             .then(if (isClickable) Modifier.clickable { onToggle() } else Modifier)
             .padding(4.dp)
-            .then(if (!isSelected) Modifier.border(1.dp, textColor, shape = MaterialTheme.shapes.small.copy(all = androidx.compose.foundation.shape.CornerSize(50.dp))) else Modifier)
-            .background(backgroundColor, shape = MaterialTheme.shapes.small.copy(all = androidx.compose.foundation.shape.CornerSize(50.dp)))
+            .then(if (!isSelected) Modifier.border(1.dp, textColor, shape = MaterialTheme.shapes.small.copy(all = CornerSize(50.dp))) else Modifier)
+            .background(backgroundColor, shape = MaterialTheme.shapes.small.copy(all = CornerSize(50.dp)))
             .padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
