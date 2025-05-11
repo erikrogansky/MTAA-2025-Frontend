@@ -1,20 +1,31 @@
 package com.roganskyerik.cookly
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.roganskyerik.cookly.network.FullRecipe
 import com.roganskyerik.cookly.network.LoginResponse
+import com.roganskyerik.cookly.network.RecipeAnalysisResponse
+import com.roganskyerik.cookly.network.RecipeByIdResponse
+import com.roganskyerik.cookly.network.RecipeOverview
+import com.roganskyerik.cookly.network.RecipeResponse
 import com.roganskyerik.cookly.network.RegisterResponse
 import com.roganskyerik.cookly.network.UserData
+import com.roganskyerik.cookly.network.isOnline
 import com.roganskyerik.cookly.permissions.PreferencesManager
 import com.roganskyerik.cookly.repository.ApiRepository
+import com.roganskyerik.cookly.ui.Ingredient
 import com.roganskyerik.cookly.ui.Mode
 import com.roganskyerik.cookly.ui.Recipe
 import com.roganskyerik.cookly.ui.Tag
+import com.roganskyerik.cookly.utils.LocalRecipeManager
 import com.roganskyerik.cookly.utils.TokenManager
 import com.roganskyerik.cookly.utils.WebSocketManager
+import dagger.hilt.android.internal.Contexts.getApplication
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -38,6 +49,39 @@ class MainViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val preferencesManager: PreferencesManager,
 ) : ViewModel() {
+    private var appContext: Context? = null
+
+    fun setContext(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    private val _recipe = MutableStateFlow<FullRecipe?>(null)
+    val recipe: StateFlow<FullRecipe?> = _recipe
+
+    fun loadRecipe(recipeId: String, isOffline: Boolean, context: Context) {
+        viewModelScope.launch {
+            if (isOffline) {
+                val localRecipe = LocalRecipeManager.loadRecipeById(context, recipeId)
+                _recipe.value = localRecipe
+            } else {
+                getRecipeById(recipeId) { response, error ->
+                    if (response != null) {
+                        _recipe.value = response.recipe
+                    } else {
+                        Log.e("ViewModel", "Error loading recipe: $error")
+                    }
+                }
+            }
+        }
+    }
+
+    fun removeRecipe() {
+        viewModelScope.launch {
+            _recipe.value = null
+        }
+    }
+
+
 
     // Authentication methods
     private val _forceLogout = MutableStateFlow(false)
@@ -150,6 +194,18 @@ class MainViewModel @Inject constructor(
         viewModelScope, SharingStarted.Lazily, Mode.SYSTEM
     )
 
+    fun setTheme(mode: Mode) {
+        viewModelScope.launch {
+            preferencesManager.setThemeMode(mode.value)
+        }
+    }
+
+    fun resetTheme() {
+        viewModelScope.launch {
+            preferencesManager.setThemeMode(Mode.SYSTEM.value)
+        }
+    }
+
     fun changePassword(currentPassword: String, newPassword: String, onResult: (Unit?, String?) -> Unit) {
         viewModelScope.launch {
             val result = repository.changePassword(currentPassword, newPassword)
@@ -233,6 +289,15 @@ class MainViewModel @Inject constructor(
 
                     WebSocketManager.closeWebSocket()
                 }
+                "recipe_update" -> {
+                    Log.d("WebSocket", "Recipe update received: $text")
+                    val recipeId = jsonObject.getString("recipeId")
+
+                    viewModelScope.launch {
+                        val offline = !appContext?.let { isOnline(it) }!!
+                        loadRecipe(recipeId, offline, appContext!!)
+                    }
+                }
             }
         }
 
@@ -259,9 +324,9 @@ class MainViewModel @Inject constructor(
     }
 
 
-//    fun sendMessageToServer(message: String) {
-//        WebSocketManager.sendMessage(message)
-//    }
+    fun sendMessageToServer(message: String) {
+        WebSocketManager.sendMessage(message)
+    }
 
     override fun onCleared() {
         // Do not close the WebSocket here, as it should be kept open until the user logs out
@@ -315,6 +380,10 @@ class MainViewModel @Inject constructor(
         viewModelScope, SharingStarted.Lazily, false
     )
 
+    val isReminderEnabled = preferencesManager.isReminderEnabled.stateIn(
+        viewModelScope, SharingStarted.Lazily, false
+    )
+
     fun toggleNotifications(enabled: Boolean) {
         viewModelScope.launch {
             preferencesManager.setNotificationsEnabled(enabled)
@@ -339,6 +408,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun toggleReminder(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setReminderEnabled(enabled)
+        }
+    }
+
 
     // Recipe methods
     fun createRecipe(recipe: Recipe, context: Context, onResult: (Unit?, String?) -> Unit) {
@@ -346,6 +421,93 @@ class MainViewModel @Inject constructor(
 
         viewModelScope.launch {
             val result = repository.createRecipe(recipe, context)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+
+    fun getOwnRecipes(onResult: (RecipeResponse?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.getOwnRecipes()
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun getPublicRecipes(onResult: (RecipeResponse?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.getPublicRecipes()
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun getRecipeById(recipeId: String, onResult: (RecipeByIdResponse?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.getRecipeById(recipeId)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun postReview(recipeId: String, rating: Int, comment: String, onResult: (Unit?, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.postReview(recipeId, rating, comment)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun generateDescription(title: String, ingredients: List<Ingredient>, instructions: List<String>, onResult: (String?, String?) -> Unit) {
+        viewModelScope.launch {
+            val jsonResponse = mutableMapOf<String, Any>()
+            jsonResponse["title"] = title
+            val ingredientsList = ingredients.map { ingredient ->
+                mapOf("name" to ingredient.name, "quantity" to ingredient.quantity)
+            }
+            jsonResponse["ingredients"] = ingredientsList
+            jsonResponse["instructions"] = instructions
+
+            val result = repository.generateDescription(jsonResponse)
+            result.onSuccess { response -> onResult(response.description, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+    fun generateDetails(title: String, ingredients: List<Ingredient>, instructions: List<String>, onResult: (RecipeAnalysisResponse?, String?) -> Unit) {
+        viewModelScope.launch {
+            val jsonResponse = mutableMapOf<String, Any>()
+            jsonResponse["title"] = title
+            val ingredientsList = ingredients.map { ingredient ->
+                mapOf("name" to ingredient.name, "quantity" to ingredient.quantity)
+            }
+            jsonResponse["ingredients"] = ingredientsList
+            jsonResponse["instructions"] = instructions
+
+            val result = repository.generateDetails(jsonResponse)
+            result.onSuccess { response -> onResult(response, null) }
+            result.onFailure { error -> onResult(null, error.message) }
+        }
+    }
+
+
+    fun setHydrationReminder(
+        timezone: String?,
+        startHour: Int?,
+        endHour: Int?,
+        interval: Int?,
+        remove: Boolean?,
+        onResult: (Unit?, String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = repository.setHydrationReminder(
+                timezone,
+                startHour,
+                endHour,
+                interval,
+                remove
+            )
             result.onSuccess { response -> onResult(response, null) }
             result.onFailure { error -> onResult(null, error.message) }
         }

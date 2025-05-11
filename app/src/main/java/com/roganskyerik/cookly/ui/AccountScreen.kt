@@ -36,11 +36,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -86,6 +89,7 @@ import com.roganskyerik.cookly.ui.modals.ModalType
 import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
 import com.roganskyerik.cookly.ui.theme.Nunito
 import java.io.File
+import java.util.TimeZone
 
 enum class Mode(val value: String, val displayName: String) {
     LIGHT("n", "Light Mode"),
@@ -112,8 +116,8 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
     val isNotificationsEnabled by viewModel.isNotificationsEnabled.collectAsState()
     val isCameraEnabled by viewModel.isCameraEnabled.collectAsState()
-    //val isFileManagerEnabled by viewModel.isFileManagerEnabled.collectAsState()
     val isLocationEnabled by viewModel.isLocationEnabled.collectAsState()
+    val isReminderEnabled by viewModel.isReminderEnabled.collectAsState()
 
     LaunchedEffect(userData) {
         mode = Mode.fromValue(userData?.darkMode ?: "s")
@@ -183,7 +187,6 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                         },
                         modifier = Modifier
                             .align(Alignment.CenterVertically),
-                        //.shadow(elevation = 1.dp, shape = RoundedCornerShape(50.dp)),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colors.Background,
                             contentColor = colors.FontColor
@@ -1023,112 +1026,6 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
                     Spacer(Modifier.height(14.dp))
 
-//                    fun requestFilePermission(activity: Activity) {
-//                        when {
-//                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-//                                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED) {
-//                                    val intent = Intent(MediaStore.ACTION_PICK_IMAGES).apply {
-//                                        putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, 10)
-//                                    }
-//                                    activity.startActivityForResult(intent, 1003)
-//                                } else {
-//                                    ActivityCompat.requestPermissions(
-//                                        activity,
-//                                        arrayOf(Manifest.permission.READ_MEDIA_IMAGES),
-//                                        1002
-//                                    )
-//                                }
-//                            }
-//
-//                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> { // Android 13
-//                                when {
-//                                    ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED -> {
-//                                        // Permission already granted
-//                                    }
-//                                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_MEDIA_IMAGES) -> {
-//                                        ActivityCompat.requestPermissions(
-//                                            activity,
-//                                            arrayOf(Manifest.permission.READ_MEDIA_IMAGES),
-//                                            1002
-//                                        )
-//                                    }
-//                                    else -> {
-//                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-//                                            data = Uri.fromParts("package", activity.packageName, null)
-//                                        }
-//                                        activity.startActivity(intent)
-//                                    }
-//                                }
-//                            }
-//
-//                            else -> {
-//                                val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-//                                    arrayOf(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
-//                                } else {
-//                                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-//                                }
-//
-//                                when {
-//                                    permissions.all { ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED } -> {
-//                                        // Permission already granted
-//                                    }
-//                                    permissions.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) } -> {
-//                                        ActivityCompat.requestPermissions(activity, permissions, 1002)
-//                                    }
-//                                    else -> {
-//                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-//                                            data = Uri.fromParts("package", activity.packageName, null)
-//                                        }
-//                                        activity.startActivity(intent)
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-
-
-
-//                    Row {
-//                        Text(
-//                            text = "File manager",
-//                            style = TextStyle(
-//                                fontFamily = Nunito,
-//                                fontWeight = FontWeight.Bold,
-//                                fontSize = 16.sp
-//                            )
-//                        )
-//
-//                        Spacer(Modifier.weight(1f))
-//
-//                        CustomSwitch(
-//                            isChecked = isFileManagerEnabled,
-//                            onCheckedChange = { isChecked ->
-////                                if (isChecked) {
-////                                    activity?.let { requestFilePermission(it) }
-////                                    viewModel.toggleFileManager(isChecked)
-////                                } else {
-////                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-////                                        data = Uri.parse("package:${context.packageName}")
-////                                    }
-////                                    context.startActivity(intent)
-////                                }
-//                                viewModel.toggleFileManager(isChecked)
-//                            },
-//                            onColor = colors.Orange100,
-//                            onBorderColor = colors.Orange100,
-//                            offColor = colors.Background,
-//                            offBorderColor = colors.FontColor,
-//                            offBorderOpacity = 0.5f,
-//                            offThumbColor = colors.FontColor,
-//                            offThumbOpacity = 0.2f,
-//                            onThumbColor = Color.White,
-//                            onThumbOpacity = 1f,
-//                            onText = "Manage"
-//                        )
-//                    }
-//
-//                    Spacer(Modifier.height(14.dp))
-
                     Row {
                         Text(
                             text = "Notifications",
@@ -1210,9 +1107,297 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
 
                         Spacer(Modifier.weight(1f))
 
+                        fun requestLocationPermission(activity: Activity) {
+                            when {
+                                ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> {
+                                    // Already granted
+                                }
+                                ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION) -> {
+                                    ActivityCompat.requestPermissions(
+                                        activity,
+                                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                                        1003
+                                    )
+                                }
+                                else -> {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            }
+                        }
+
                         CustomSwitch(
                             isChecked = isLocationEnabled,
-                            onCheckedChange = { viewModel.toggleLocation(it) },
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                                        activity?.let { requestLocationPermission(it) }
+                                    }
+                                    viewModel.toggleLocation(isChecked)
+                                } else {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
+                            onColor = colors.Orange100,
+                            onBorderColor = colors.Orange100,
+                            offColor = colors.Background,
+                            offBorderColor = colors.FontColor,
+                            offBorderOpacity = 0.5f,
+                            offThumbColor = colors.FontColor,
+                            offThumbOpacity = 0.2f,
+                            onThumbColor = Color.White,
+                            onThumbOpacity = 1f,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(26.dp))
+
+                Column()
+                {
+                    Text(
+                        text = "Hydration Reminder",
+                        style = TextStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 18.sp
+                        )
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row {
+                        Text(
+                            text = "Enable reminder",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        CustomSwitch(
+                            isChecked = isReminderEnabled,
+                            onCheckedChange = { isChecked ->
+                                if (isReminderEnabled) {
+                                    viewModel.setHydrationReminder(
+                                        remove = true,
+                                        timezone = null,
+                                        startHour = null,
+                                        endHour = null,
+                                        interval = null,
+                                    ) { response, error ->
+                                        if (response != null) {
+                                            viewModel.toggleReminder(isChecked)
+                                        } else {
+                                            errorMessage = error
+                                        }
+                                    }
+                                } else {
+                                    if (!isNotificationsEnabled) {
+                                        Toast.makeText(context, "Please enable notifications first", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        showModal(
+                                            ModalType.Custom { onDismiss ->
+                                                Column(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth(),
+                                                    horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                    Text(
+                                                        text = "Set reminder",
+                                                        style = TextStyle(
+                                                            fontFamily = Nunito,
+                                                            fontWeight = FontWeight.Black,
+                                                            fontSize = 22.sp,
+                                                            textAlign = TextAlign.Center
+                                                        ),
+                                                        color = colors.FontColor
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(24.dp))
+
+                                                    var startHour by remember { mutableStateOf(8f) }
+                                                    var endHour by remember { mutableStateOf(20f) }
+                                                    var interval by remember { mutableStateOf(2f) }
+                                                    var modalError by remember { mutableStateOf<String?>(null) }
+
+                                                    @Composable
+                                                    fun sliderLabel(label: String, value: String) {
+                                                        Text(
+                                                            text = "$label: $value",
+                                                            style = TextStyle(
+                                                                fontFamily = Nunito,
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 16.sp
+                                                            ),
+                                                            modifier = Modifier.align(Alignment.Start).padding(start = 4.dp),
+                                                            color = colors.FontColor
+                                                        )
+                                                    }
+
+                                                    sliderLabel("Start hour", "${startHour.toInt()}h")
+                                                    Slider(
+                                                        value = startHour,
+                                                        onValueChange = { startHour = it },
+                                                        valueRange = 0f..23f,
+                                                        steps = 22,
+                                                        colors = SliderColors(
+                                                            thumbColor = colors.Orange100,
+                                                            activeTrackColor = colors.Orange100,
+                                                            inactiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            activeTickColor = colors.Orange100,
+                                                            inactiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledThumbColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledActiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledActiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledInactiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledInactiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                        )
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                                    sliderLabel("End hour", "${endHour.toInt()}h")
+                                                    Slider(
+                                                        value = endHour,
+                                                        onValueChange = { endHour = it },
+                                                        valueRange = 0f..23f,
+                                                        steps = 22,
+                                                        colors = SliderColors(
+                                                            thumbColor = colors.Orange100,
+                                                            activeTrackColor = colors.Orange100,
+                                                            inactiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            activeTickColor = colors.Orange100,
+                                                            inactiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledThumbColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledActiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledActiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledInactiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledInactiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                        )
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                                    sliderLabel("Interval (hours)", "${interval.toInt()}")
+                                                    Slider(
+                                                        value = interval,
+                                                        onValueChange = { interval = it },
+                                                        valueRange = 1f..5f,
+                                                        steps = 3,
+                                                        colors = SliderColors(
+                                                            thumbColor = colors.Orange100,
+                                                            activeTrackColor = colors.Orange100,
+                                                            inactiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            activeTickColor = colors.Orange100,
+                                                            inactiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledThumbColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledActiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledActiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledInactiveTrackColor = colors.Orange100.copy(alpha = 0.5f),
+                                                            disabledInactiveTickColor = colors.Orange100.copy(alpha = 0.5f),
+                                                        )
+                                                    )
+
+                                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                                    modalError?.let {
+                                                        Text(
+                                                            text = it,
+                                                            style = TextStyle(
+                                                                fontFamily = Nunito,
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 16.sp,
+                                                                color = colors.Error
+                                                            ),
+                                                            modifier = Modifier.align(Alignment.Start).padding(start = 4.dp)
+                                                        )
+                                                    }
+
+                                                    Row {
+                                                        Button(
+                                                            onClick = onDismiss,
+                                                            modifier = Modifier.weight(1f),
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = colors.ModalBackground,
+                                                                contentColor = colors.FontColor
+                                                            ),
+                                                            border = BorderStroke(1.dp, colors.FontColor),
+                                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                                        ) {
+                                                            Text(
+                                                                text = "Cancel",
+                                                                style = TextStyle(
+                                                                    fontFamily = Nunito,
+                                                                    fontWeight = FontWeight.Black,
+                                                                    fontSize = 16.sp
+                                                                ),
+                                                                modifier = Modifier.align(Alignment.CenterVertically)
+                                                            )
+                                                        }
+
+                                                        Spacer(modifier = Modifier.width(16.dp))
+
+                                                        Button(
+                                                            onClick = {
+                                                                if (startHour.toInt() < 0 || startHour.toInt() > 23 || endHour.toInt() < 0 || endHour.toInt() > 23) {
+                                                                    modalError = "Invalid hour"
+                                                                    return@Button
+                                                                }
+                                                                if (interval.toInt() <= 0) {
+                                                                    modalError = "Invalid interval"
+                                                                    return@Button
+                                                                }
+
+                                                                viewModel.setHydrationReminder(
+                                                                    remove = false,
+                                                                    timezone = TimeZone.getDefault().id,
+                                                                    startHour = startHour.toInt(),
+                                                                    endHour = endHour.toInt(),
+                                                                    interval = interval.toInt(),
+                                                                ) { response, error ->
+                                                                    if (response != null) {
+                                                                        viewModel.toggleReminder(isChecked)
+                                                                        onDismiss()
+                                                                    } else {
+                                                                        modalError = error
+                                                                    }
+                                                                }
+                                                            },
+                                                            modifier = Modifier.weight(1f),
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = colors.Orange100,
+                                                                contentColor = Color.White
+                                                            ),
+                                                            border = BorderStroke(1.dp, colors.Orange100),
+                                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                                                        ) {
+                                                            Text(
+                                                                text = "Save",
+                                                                style = TextStyle(
+                                                                    fontFamily = Nunito,
+                                                                    fontWeight = FontWeight.Black,
+                                                                    fontSize = 16.sp
+                                                                ),
+                                                                modifier = Modifier.align(Alignment.CenterVertically)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        )
+
+                                    }
+                                }
+                            },
                             onColor = colors.Orange100,
                             onBorderColor = colors.Orange100,
                             offColor = colors.Background,

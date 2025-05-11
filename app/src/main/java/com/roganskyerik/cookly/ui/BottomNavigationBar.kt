@@ -58,9 +58,7 @@ fun BottomNavigationBar(navController: NavController) {
                                 restoreState = true
                             }
                         }
-                    },
-                    selectedColor = colors.Orange100,
-                    unselectedColor = Color.White
+                    }
                 )
             }
         }
@@ -72,21 +70,19 @@ fun BottomNavItemView(
     item: BottomNavItem,
     isSelected: Boolean,
     onClick: () -> Unit,
-    selectedColor: Color,
-    unselectedColor: Color
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) selectedColor.copy(alpha = 0.2f) else Color.Transparent)
+            .background(if (isSelected) Color.White.copy(alpha = .2f) else Color.Transparent)
             .padding(8.dp)
             .clickable(onClick = onClick)
     ) {
         Icon(
             painter = painterResource(id = item.icon),
             contentDescription = item.label,
-            tint = if (isSelected) selectedColor else unselectedColor,
+            tint = Color.White,
             modifier = Modifier.size(32.dp)
         )
 
@@ -94,7 +90,7 @@ fun BottomNavItemView(
 
         Text(
             text = item.label,
-            color = if (isSelected) selectedColor else unselectedColor,
+            color = Color.White,
             style = TextStyle(
                 fontFamily = Nunito,
                 fontWeight = FontWeight.Black,

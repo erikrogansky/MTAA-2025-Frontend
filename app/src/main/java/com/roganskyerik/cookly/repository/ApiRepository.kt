@@ -11,8 +11,15 @@ import com.roganskyerik.cookly.network.LoginResponse
 import com.roganskyerik.cookly.network.LogoutAllRequest
 import com.roganskyerik.cookly.network.LogoutRequest
 import com.roganskyerik.cookly.network.OauthLoginRequest
+import com.roganskyerik.cookly.network.PostReviewRequest
+import com.roganskyerik.cookly.network.RecipeAnalysisResponse
+import com.roganskyerik.cookly.network.RecipeByIdResponse
+import com.roganskyerik.cookly.network.RecipeDescriptionResponse
+import com.roganskyerik.cookly.network.RecipeOverview
+import com.roganskyerik.cookly.network.RecipeResponse
 import com.roganskyerik.cookly.network.RegisterRequest
 import com.roganskyerik.cookly.network.RegisterResponse
+import com.roganskyerik.cookly.network.ReminderRequest
 import com.roganskyerik.cookly.network.UpdateUserRequest
 import com.roganskyerik.cookly.network.UserData
 import com.roganskyerik.cookly.ui.Mode
@@ -29,6 +36,7 @@ import org.json.JSONObject
 import retrofit2.HttpException
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URL
 import javax.inject.Inject
 
 class ApiRepository @Inject constructor(
@@ -224,60 +232,66 @@ class ApiRepository @Inject constructor(
             try {
                 val contentResolver = context.contentResolver
 
-                // Prepare cover photo
+                fun isRemoteUri(uri: Uri): Boolean {
+                    return uri.scheme == "http" || uri.scheme == "https"
+                }
+
+                fun createTempFileFromUri(uri: Uri, filePrefix: String): File {
+                    val tempFile = File.createTempFile(filePrefix, ".jpg", context.cacheDir)
+
+                    if (isRemoteUri(uri)) {
+                        URL(uri.toString()).openStream().use { input ->
+                            FileOutputStream(tempFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    } else {
+                        contentResolver.openInputStream(uri)?.use { input ->
+                            FileOutputStream(tempFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        } ?: throw IllegalArgumentException("Unable to open URI: $uri")
+                    }
+
+                    return tempFile
+                }
+
                 val coverPhotoPart = recipe.coverPhoto?.let { uri ->
-                    val inputStream = contentResolver.openInputStream(uri)
-                    val tempFile = File.createTempFile("coverPhoto", ".jpg", context.cacheDir)
-                    inputStream?.use { input ->
-                        FileOutputStream(tempFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
+                    val tempFile = createTempFileFromUri(uri, "coverPhoto")
                     val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                    val filePart = MultipartBody.Part.createFormData("coverPhoto", tempFile.name, requestBody)
-                    Log.d("RecipeUpload", "Cover photo: ${filePart.headers}")
-                    filePart
+                    MultipartBody.Part.createFormData("coverPhoto", tempFile.name, requestBody)
                 }
 
-                // Prepare other photos
                 val imagesParts = recipe.photos.map { uri ->
-                    val inputStream = contentResolver.openInputStream(uri)
-                    val tempFile = File.createTempFile("photo", ".jpg", context.cacheDir)
-                    inputStream?.use { input ->
-                        FileOutputStream(tempFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
+                    val tempFile = createTempFileFromUri(uri, "photo")
                     val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                    val filePart = MultipartBody.Part.createFormData("images[]", tempFile.name, requestBody)
-                    Log.d("RecipeUpload", "Image photo: ${filePart.headers}")
-                    filePart
+                    MultipartBody.Part.createFormData("images[]", tempFile.name, requestBody)
                 }
 
-                // Prepare other fields (title, tags, ingredients, etc.)
+                var recipeIdPart: MultipartBody.Part? = null
+                if (recipe.recipeId != null) {
+                    recipeIdPart = MultipartBody.Part.createFormData("recipeId", recipe.recipeId)
+                }
                 val titlePart = MultipartBody.Part.createFormData("title", recipe.title)
-                Log.d("RecipeUpload", "Title: ${recipe.title}")
-
                 val descriptionPart = MultipartBody.Part.createFormData("description", recipe.description)
-                Log.d("RecipeUpload", "Description: ${recipe.description}")
-
                 val tagsPart = MultipartBody.Part.createFormData("tags", recipe.tags.joinToString(","))
-                Log.d("RecipeUpload", "Tags: ${recipe.tags}")
-
-                val ingredientsPart = MultipartBody.Part.createFormData("ingredients", recipe.ingredients.joinToString(",") { it.name })
-                Log.d("RecipeUpload", "Ingredients: ${recipe.ingredients.joinToString(",") { it.name }}")
-
+                val ingredientsPart = MultipartBody.Part.createFormData(
+                    "ingredients",
+                    recipe.ingredients.joinToString(",") { "${it.icon},${it.name},${it.quantity}" }
+                )
                 val instructionsPart = MultipartBody.Part.createFormData("instructions", recipe.instructions.joinToString("\n"))
-                Log.d("RecipeUpload", "Instructions: ${recipe.instructions.joinToString("\n")}")
-
                 val isPublicPart = MultipartBody.Part.createFormData("isPublic", recipe.isPublic.toString())
-                Log.d("RecipeUpload", "Is Public: ${recipe.isPublic}")
+                val detailsPart = MultipartBody.Part.createFormData(
+                    "details",
+                    "prepTime: ${recipe.prepTime}, difficulty: ${recipe.difficulty}, servings: ${recipe.servings}, calories: ${recipe.calories}"
+                )
+                var countryPart: MultipartBody.Part? = null
+                if (recipe.country != null) {
+                    countryPart = MultipartBody.Part.createFormData("country", recipe.country)
+                }
 
-                val detailsPart = MultipartBody.Part.createFormData("details", "prepTime: ${recipe.prepTime}, difficulty: ${recipe.difficulty}, servings: ${recipe.servings}, calories: ${recipe.calories}")
-                Log.d("RecipeUpload", "Details: prepTime=${recipe.prepTime}, difficulty=${recipe.difficulty}, servings=${recipe.servings}, calories=${recipe.calories}")
-
-                // Make the request
                 apiService.createRecipe(
+                    recipeId = recipeIdPart,
                     title = titlePart,
                     tags = tagsPart,
                     ingredients = ingredientsPart,
@@ -286,7 +300,8 @@ class ApiRepository @Inject constructor(
                     coverPhoto = coverPhotoPart,
                     images = imagesParts,
                     description = descriptionPart,
-                    details = detailsPart
+                    details = detailsPart,
+                    country = countryPart
                 )
 
                 Result.success(Unit)
@@ -296,6 +311,119 @@ class ApiRepository @Inject constructor(
                 Result.failure(Exception(errorMessage))
             } catch (e: Exception) {
                 Log.e("RecipeUpload", "Error: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
+
+
+    suspend fun getOwnRecipes(): Result<RecipeResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getOwnRecipes()
+                Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getPublicRecipes(): Result<RecipeResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getPublicRecipes()
+                Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getRecipeById(recipeId: String): Result<RecipeByIdResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getRecipeById(recipeId)
+                Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun postReview(recipeId: String, rating: Int, comment: String?): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.postReview(PostReviewRequest(recipeId.toInt(), rating, comment))
+                Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun generateDescription(jsonString: MutableMap<String, Any>): Result<RecipeDescriptionResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.generateDescription(jsonString)
+                Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun generateDetails(jsonString: MutableMap<String, Any>): Result<RecipeAnalysisResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.generateDetails(jsonString)
+                Result.success(response)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun setHydrationReminder(
+        timezone: String?,
+        startHour: Int?,
+        endHour: Int?,
+        interval: Int?,
+        remove: Boolean?,
+    ): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                apiService.setHydrationReminder(
+                    ReminderRequest(
+                        timezone = timezone,
+                        startHour = startHour,
+                        endHour = endHour,
+                        interval = interval,
+                        remove = remove
+                    )
+                )
+                Result.success(Unit)
+            } catch (e: HttpException) {
+                val errorMessage = extractErrorMessage(e)
+                Result.failure(Exception(errorMessage))
+            } catch (e: Exception) {
                 Result.failure(e)
             }
         }

@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="Cookly">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-03-23T18:27:06.206743Z">
+        <DropdownSelection timestamp="2025-04-13T09:01:51.674476Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=/Users/roganskyerik/.android/avd/Medium_Phone_API_35.avd" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=70831a7e" />
             </handle>
           </Target>
         </DropdownSelection>

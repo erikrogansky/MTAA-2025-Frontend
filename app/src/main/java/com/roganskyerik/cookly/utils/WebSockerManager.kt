@@ -23,9 +23,9 @@ object WebSocketManager {
         }
     }
 
-//    fun sendMessage(message: String) {
-//        webSocket?.send(message)
-//    }
+    fun sendMessage(message: String) {
+        webSocket?.send(message)
+    }
 
     fun closeWebSocket() {
         Log.d("WebSocket", "Closing WebSocket.")

@@ -48,7 +48,8 @@ android {
 
 dependencies {
     implementation(libs.hilt.android)
-    implementation(libs.googleid) // ✅ Hilt runtime
+    implementation(libs.googleid)
+    implementation(libs.play.services.location) // ✅ Hilt runtime
     kapt(libs.hilt.compiler)
 
     implementation(libs.androidx.core.ktx)

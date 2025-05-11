@@ -18,6 +18,7 @@ data class CooklyColors(
     val Positive: Color,
 
     val Background: Color,
+    val ItemBackground: Color,
 
     val ModalBackground: Color,
 
@@ -45,6 +46,7 @@ val LightCooklyColors = CooklyColors(
     Positive = Color(0xFF009600),
 
     Background = Color(0xFFFFFFFF),
+    ItemBackground = Color(0xFFFFFFFF),
 
     ModalBackground = Color(0xFFFFFFFF),
 
@@ -72,6 +74,8 @@ val DarkCooklyColors = CooklyColors(
     Positive = Color(0xFF009600),
 
     Background = Color(0xFF15110B),
+    ItemBackground = Color(0xFF313131),
+
 
     ModalBackground = Color(0xFF313131),
 
@@ -82,5 +86,5 @@ val DarkCooklyColors = CooklyColors(
 
     AI = Color(0xFF8900A7),
 
-    LightGray = Color(0xFFF5F5F5),
+    LightGray = Color(0xFF313131),
 )

@@ -221,6 +221,8 @@ fun LoginScreen(navController: NavController = rememberNavController(), viewMode
                             if (response != null) {
                                 viewModel.saveTokens(response.accessToken, response.refreshToken)
                                 viewModel.startWebSocket(response.accessToken)
+                                Log.d("Theme Mode", "Theme mode: ${response.darkMode}")
+                                viewModel.setTheme(Mode.fromValue(response.darkMode))
                                 navController.navigate("home") {
                                     popUpTo("login") { inclusive = true }
                                 }
@@ -384,6 +386,7 @@ fun GoogleLoginButton(context: Context, viewModel: MainViewModel, navController:
                                         if (response != null) {
                                             viewModel.saveTokens(response.accessToken, response.refreshToken)
                                             viewModel.startWebSocket(response.accessToken)
+                                            viewModel.setTheme(Mode.fromValue(response.darkMode))
                                             navController.navigate("home") {
                                                 popUpTo("login") { inclusive = true }
                                             }
@@ -476,6 +479,7 @@ fun FacebookLoginButton(
                                     if (response != null) {
                                         viewModel.saveTokens(response.accessToken, response.refreshToken)
                                         viewModel.startWebSocket(response.accessToken)
+                                        viewModel.setTheme(Mode.fromValue(response.darkMode))
                                         navController.navigate("home") {
                                             popUpTo("login") { inclusive = true }
                                         }

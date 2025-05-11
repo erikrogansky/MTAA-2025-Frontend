@@ -13,10 +13,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.roganskyerik.cookly.MainViewModel
 import com.roganskyerik.cookly.R
 
 @Composable
-fun SplashScreen() {
+fun SplashScreen(isDarkTheme: Boolean) {
+
     val scale by rememberInfiniteTransition().animateFloat(
         initialValue = 0.9f,
         targetValue = 1.0f,
@@ -37,7 +40,7 @@ fun SplashScreen() {
     ) {
         Image(
             painter = painterResource(
-                id = if (isSystemInDarkTheme()) R.drawable.login_background_dark
+                id = if (isDarkTheme) R.drawable.login_background_dark
                 else R.drawable.login_background_light
             ),
             contentDescription = "Login Background",

@@ -1,8 +1,14 @@
 package com.roganskyerik.cookly.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.location.Address
+import android.location.Geocoder
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -71,14 +77,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.android.gms.location.LocationServices
 import com.roganskyerik.cookly.MainViewModel
 import com.roganskyerik.cookly.R
+import com.roganskyerik.cookly.network.FullRecipe
 import com.roganskyerik.cookly.ui.modals.ModalType
 import com.roganskyerik.cookly.ui.theme.LocalCooklyColors
 import com.roganskyerik.cookly.ui.theme.Nunito
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Locale
 import kotlin.math.roundToInt
 
 enum class Difficulty {
@@ -107,6 +123,7 @@ data class Ingredient(
 )
 
 data class Recipe(
+    val recipeId: String?,
     val title: String,
     val description: String,
     val prepTime: Float,
@@ -118,12 +135,13 @@ data class Recipe(
     val instructions: List<String>,
     val isPublic: Boolean,
     val coverPhoto: Uri,
-    val photos: List<Uri>
+    val photos: List<Uri>,
+    val country: String?,
 )
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, viewModel: MainViewModel = hiltViewModel()) {
+fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, viewModel: MainViewModel = hiltViewModel(), id: String? = null) {
     val colors = LocalCooklyColors.current
 
     var errorMessage by remember { mutableStateOf("") }
@@ -135,8 +153,94 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
     var ingredients by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
     var instructions by remember { mutableStateOf<List<String>>(emptyList()) }
     var isPublic by remember { mutableStateOf(false) }
+    val imageUris = remember { mutableStateListOf<Uri>() }
+    var coverPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
+
+    var country: String = ""
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        val availableSlots = 10 - imageUris.size
+        if (availableSlots > 0) {
+            val toAdd = uris.take(availableSlots)
+            imageUris.addAll(toAdd)
+            if (coverPhotoUri == null && toAdd.isNotEmpty()) {
+                coverPhotoUri = toAdd.first()
+            }
+        }
+    }
+
+    val takePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            cameraImageUri.value?.let { uri ->
+                if (imageUris.size < 10) {
+                    imageUris.add(uri)
+                    if (coverPhotoUri == null) {
+                        coverPhotoUri = uri
+                    }
+                }
+            }
+        }
+    }
+
+    val context = LocalContext.current
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val newUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                File(context.cacheDir, "temp_photo_${System.currentTimeMillis()}.jpg")
+            )
+            cameraImageUri.value = newUri
+            takePhotoLauncher.launch(newUri)
+        } else {
+            Toast.makeText(context, "Camera permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(Unit) {
+        if (id != null) {
+            viewModel.getRecipeById(id) { response, error ->
+                if (error != null) {
+                    errorMessage = error
+                    Log.d("RecipeScreen", "Error: $error")
+                }
+                if (response != null) {
+                    title = response.recipe.title
+                    description = response.recipe.description
+                    details = RecipeDetails(
+                        prepTime = response.recipe.prepTime,
+                        difficulty = when (response.recipe.difficulty) {
+                            "EASY" -> Difficulty.EASY
+                            "MODERATE" -> Difficulty.MODERATE
+                            "DIFFICULT" -> Difficulty.DIFFICULT
+                            else -> null
+                        },
+                        servings = response.recipe.servings.toInt(),
+                        calories = response.recipe.calories.toInt()
+                    )
+                    tags = response.recipe.tags
+                    ingredients = response.recipe.ingredients
+                    instructions = response.recipe.instructions
+                    isPublic = response.recipe.isPublic
+                    imageUris.addAll(response.recipe.images.map { Uri.parse(it) })
+                    coverPhotoUri = Uri.parse(response.recipe.coverPhotoUrl)
+                    country = response.recipe.country.toString()
+
+                    Log.d("RecipeScreen", "Response: $response")
+                }
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -146,7 +250,7 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
         verticalArrangement = Arrangement.Top,
     ) {
         Text(
-            text = "Add Recipe",
+            text = if (id != null) "Edit recipe" else "Add recipe",
             style = TextStyle(
                 fontFamily = Nunito,
                 fontWeight = FontWeight.Black,
@@ -258,7 +362,27 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
                                             Row(Modifier.fillMaxWidth()) {
                                                 Button(
-                                                    onClick = { onDismiss() },
+                                                    onClick = { if (modalTitle == "") {
+                                                        modalError = "Please fill out title first for more accurate AI description"
+                                                    } else if (ingredients == null || instructions == null) {
+                                                        modalError = "You cannot have AI description without ingredients and instructions"
+                                                    } else {
+                                                        viewModel.generateDescription(
+                                                            title = modalTitle,
+                                                            ingredients = ingredients,
+                                                            instructions = instructions
+                                                        ) { generatedDescription, error ->
+                                                            if (error != null) {
+                                                                modalError = error
+                                                            } else {
+                                                                if (generatedDescription != null) {
+                                                                    modalDescription = generatedDescription
+                                                                } else {
+                                                                    modalError = "Something went wrong"
+                                                                }
+                                                            }
+                                                        }
+                                                    } },
                                                     modifier = Modifier
                                                         .align(Alignment.CenterVertically)
                                                         .weight(1f),
@@ -275,12 +399,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                                                         vertical = 12.dp
                                                     ),
                                                 ) {
-                                                    Image(
+                                                    Icon(
                                                         painter = painterResource(id = R.drawable.ai_icon),
                                                         contentDescription = "AI",
                                                         modifier = Modifier
                                                             .align(Alignment.CenterVertically)
-                                                            .size(24.dp)
+                                                            .size(24.dp),
+                                                        tint = colors.AI
                                                     )
                                                     Spacer(modifier = Modifier.width(6.dp))
                                                     Text(
@@ -456,7 +581,29 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
                                                 Row(Modifier.fillMaxWidth()) {
                                                     Button(
-                                                        onClick = { onDismiss() },
+                                                        onClick = {
+                                                            if (modalTitle == "") {
+                                                                modalError = "Please fill out title first for more accurate AI description"
+                                                            } else if (ingredients == null || instructions == null) {
+                                                                modalError = "You cannot have AI description without ingredients and instructions"
+                                                            } else {
+                                                                viewModel.generateDescription(
+                                                                    title = modalTitle,
+                                                                    ingredients = ingredients,
+                                                                    instructions = instructions
+                                                                ) { generatedDescription, error ->
+                                                                    if (error != null) {
+                                                                        modalError = error
+                                                                    } else {
+                                                                        if (generatedDescription != null) {
+                                                                            modalDescription = generatedDescription
+                                                                        } else {
+                                                                            modalError = "Something went wrong"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
                                                         modifier = Modifier
                                                             .align(Alignment.CenterVertically)
                                                             .weight(1f),
@@ -473,12 +620,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                                                             vertical = 12.dp
                                                         ),
                                                     ) {
-                                                        Image(
+                                                        Icon(
                                                             painter = painterResource(id = R.drawable.ai_icon),
                                                             contentDescription = "AI",
                                                             modifier = Modifier
                                                                 .align(Alignment.CenterVertically)
-                                                                .size(24.dp)
+                                                                .size(24.dp),
+                                                            tint = colors.AI
                                                         )
                                                         Spacer(modifier = Modifier.width(6.dp))
                                                         Text(
@@ -542,47 +690,17 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                         border = BorderStroke(1.dp, colors.LightOutline),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                     ) {
-                        Image(
+                        Icon(
                             painter = painterResource(id = R.drawable.plus_icon),
                             contentDescription = "Add",
                             modifier = Modifier
                                 .align(Alignment.CenterVertically)
-                                .size(24.dp)
+                                .size(24.dp),
+                            tint = colors.FontColor
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Add about",
-                            style = TextStyle(
-                                fontFamily = Nunito,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 16.sp
-                            ),
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Button(
-                        onClick = { /*TODO*/ },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.Background,
-                            contentColor = colors.AI
-                        ),
-                        border = BorderStroke(1.dp, colors.LightOutline),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ai_icon),
-                            contentDescription = "Add",
-                            modifier = Modifier
-                                .align(Alignment.CenterVertically)
-                                .size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Suggest",
                             style = TextStyle(
                                 fontFamily = Nunito,
                                 fontWeight = FontWeight.Black,
@@ -848,7 +966,31 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
                                             Row(Modifier.fillMaxWidth()) {
                                                 Button(
-                                                    onClick = { onDismiss() },
+                                                    onClick = {
+                                                         if (title == "" || ingredients == null || instructions == null) {
+                                                            modalError = "You cannot have AI details without title, ingredients and instructions"
+                                                        } else {
+                                                            viewModel.generateDetails(
+                                                                title = title,
+                                                                ingredients = ingredients,
+                                                                instructions = instructions
+                                                            ) { generatedDetails, error ->
+                                                                if (error != null) {
+                                                                    modalError = error
+                                                                } else {
+                                                                    if (generatedDetails != null) {
+                                                                        modalCalories = generatedDetails.calories.toString()
+                                                                        modalServings = generatedDetails.portions.toString()
+                                                                        modalHours = generatedDetails.cook_length.toInt().toString()
+                                                                        modalMinutes = ((generatedDetails.cook_length - generatedDetails.cook_length.toInt()) * 60).roundToInt().toString()
+                                                                        modalDifficulty = generatedDetails.difficulty.replaceFirstChar { it.uppercaseChar() }
+                                                                    } else {
+                                                                        modalError = "Something went wrong"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    },
                                                     modifier = Modifier
                                                         .align(Alignment.CenterVertically)
                                                         .weight(1f),
@@ -865,12 +1007,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                                                         vertical = 12.dp
                                                     ),
                                                 ) {
-                                                    Image(
+                                                    Icon(
                                                         painter = painterResource(id = R.drawable.ai_icon),
                                                         contentDescription = "AI",
                                                         modifier = Modifier
                                                             .align(Alignment.CenterVertically)
-                                                            .size(24.dp)
+                                                            .size(24.dp),
+                                                        tint = colors.AI
                                                     )
                                                     Spacer(modifier = Modifier.width(6.dp))
                                                     Text(
@@ -1295,7 +1438,31 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
                                                 Row(Modifier.fillMaxWidth()) {
                                                     Button(
-                                                        onClick = { onDismiss() },
+                                                        onClick = {
+                                                            if (title == "" || ingredients == null || instructions == null) {
+                                                                modalError = "You cannot have AI details without title, ingredients and instructions"
+                                                            } else {
+                                                                viewModel.generateDetails(
+                                                                    title = title,
+                                                                    ingredients = ingredients,
+                                                                    instructions = instructions
+                                                                ) { generatedDetails, error ->
+                                                                    if (error != null) {
+                                                                        modalError = error
+                                                                    } else {
+                                                                        if (generatedDetails != null) {
+                                                                            modalCalories = generatedDetails.calories.toString()
+                                                                            modalServings = generatedDetails.portions.toString()
+                                                                            modalHours = generatedDetails.cook_length.toInt().toString()
+                                                                            modalMinutes = ((generatedDetails.cook_length - generatedDetails.cook_length.toInt()) * 60).roundToInt().toString()
+                                                                            modalDifficulty = generatedDetails.difficulty.replaceFirstChar { it.uppercaseChar() }
+                                                                        } else {
+                                                                            modalError = "Something went wrong"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
                                                         modifier = Modifier
                                                             .align(Alignment.CenterVertically)
                                                             .weight(1f),
@@ -1312,12 +1479,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                                                             vertical = 12.dp
                                                         ),
                                                     ) {
-                                                        Image(
+                                                        Icon(
                                                             painter = painterResource(id = R.drawable.ai_icon),
                                                             contentDescription = "AI",
                                                             modifier = Modifier
                                                                 .align(Alignment.CenterVertically)
-                                                                .size(24.dp)
+                                                                .size(24.dp),
+                                                            tint = colors.AI
                                                         )
                                                         Spacer(modifier = Modifier.width(6.dp))
                                                         Text(
@@ -1390,12 +1558,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                         border = BorderStroke(1.dp, colors.LightOutline),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                     ) {
-                        Image(
+                        Icon(
                             painter = painterResource(id = R.drawable.plus_icon),
                             contentDescription = "Add",
                             modifier = Modifier
                                 .align(Alignment.CenterVertically)
-                                .size(24.dp)
+                                .size(24.dp),
+                            tint = colors.FontColor
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
@@ -1412,7 +1581,39 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                     Spacer(modifier = Modifier.width(10.dp))
 
                     Button(
-                        onClick = { /*TODO*/ },
+                        onClick = { if (title == "" || ingredients == null || instructions == null) {
+                            errorMessage = "You cannot have AI details without title, ingredients and instructions"
+                        } else {
+                            viewModel.generateDetails(
+                                title = title,
+                                ingredients = ingredients,
+                                instructions = instructions
+                            ) { generatedDetails, error ->
+                                if (error != null) {
+                                    errorMessage = error
+                                } else {
+                                    if (generatedDetails != null) {
+
+                                        details = RecipeDetails(
+                                            prepTime = generatedDetails.cook_length,
+                                            difficulty = when (generatedDetails.difficulty) {
+                                                "Easy" -> Difficulty.EASY
+                                                "Moderate" -> Difficulty.MODERATE
+                                                "Hard" -> Difficulty.DIFFICULT
+                                                "easy" -> Difficulty.EASY
+                                                "moderate" -> Difficulty.MODERATE
+                                                "hard" -> Difficulty.DIFFICULT
+                                                else -> null
+                                            },
+                                            servings = generatedDetails.portions.toInt(),
+                                            calories = generatedDetails.calories.toInt()
+                                        )
+                                    } else {
+                                        errorMessage = "Something went wrong"
+                                    }
+                                }
+                            }
+                        } },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colors.Background,
@@ -1421,12 +1622,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                         border = BorderStroke(1.dp, colors.LightOutline),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                     ) {
-                        Image(
+                        Icon(
                             painter = painterResource(id = R.drawable.ai_icon),
                             contentDescription = "Add",
                             modifier = Modifier
                                 .align(Alignment.CenterVertically)
-                                .size(24.dp)
+                                .size(24.dp),
+                            tint = colors.AI
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
@@ -1758,6 +1960,17 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                     shape = RoundedCornerShape(50.dp)
                 ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.plus_icon),
+                        contentDescription = "Add",
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                            .size(24.dp),
+                        tint = colors.FontColor
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
                     Text(
                         text = "Add tags",
                         style = TextStyle(
@@ -1858,10 +2071,10 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
                                         Button(
                                             onClick = {
-                                                showPickIconScreen.value = true // Switch to pick icon screen
+                                                showPickIconScreen.value = true
                                             },
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = colors.Background,
+                                                containerColor = colors.ModalBackground,
                                                 contentColor = colors.FontColor
                                             ),
                                             border = BorderStroke(1.dp, colors.DarkOrange),
@@ -2284,12 +2497,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 shape = RoundedCornerShape(50.dp)
             ) {
-                Image(
+                Icon(
                     painter = painterResource(id = R.drawable.plus_icon),
                     contentDescription = "Add",
                     modifier = Modifier
                         .align(Alignment.CenterVertically)
-                        .size(24.dp)
+                        .size(24.dp),
+                    tint = colors.FontColor
                 )
 
                 Spacer(modifier = Modifier.width(6.dp))
@@ -2583,12 +2797,13 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 shape = RoundedCornerShape(50.dp)
             ) {
-                Image(
+                Icon(
                     painter = painterResource(id = R.drawable.plus_icon),
                     contentDescription = "Add",
                     modifier = Modifier
                         .align(Alignment.CenterVertically)
-                        .size(24.dp)
+                        .size(24.dp),
+                    tint = colors.FontColor
                 )
 
                 Spacer(modifier = Modifier.width(6.dp))
@@ -2606,22 +2821,6 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
 
         Spacer(modifier = Modifier.height(24.dp))
 
-            val imageUris = remember { mutableStateListOf<Uri>() }
-            var coverPhotoUri by remember { mutableStateOf<Uri?>(null) }
-
-            val imagePickerLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.GetMultipleContents()
-            ) { uris: List<Uri> ->
-                val availableSlots = 10 - imageUris.size
-                if (availableSlots > 0) {
-                    val toAdd = uris.take(availableSlots)
-                    imageUris.addAll(toAdd)
-                    if (coverPhotoUri == null && toAdd.isNotEmpty()) {
-                        coverPhotoUri = toAdd.first()
-                    }
-                }
-            }
-
             Section(title = "Photos") {
                 Row(
                     modifier = Modifier
@@ -2638,16 +2837,66 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                             },
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Image(
+                        Icon(
                             painter = painterResource(id = R.drawable.plus_icon),
                             contentDescription = "Add photo",
                             modifier = Modifier
                                 .size(24.dp)
-                                .align(Alignment.CenterHorizontally)
+                                .align(Alignment.CenterHorizontally),
+                            tint = colors.FontColor
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Add photos",
+                            style = TextStyle(
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp
+                            ),
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    val context = LocalContext.current
+
+                    Column(
+                        modifier = Modifier
+                            .size(160.dp)
+                            .border(1.dp, colors.LightOutline, shape = RoundedCornerShape(10.dp))
+                            .clickable {
+                                val permission = Manifest.permission.CAMERA
+                                when {
+                                    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED -> {
+                                        // Permission already granted
+                                        val newUri = FileProvider.getUriForFile(
+                                            context,
+                                            "${context.packageName}.fileprovider",
+                                            File(context.cacheDir, "temp_photo_${System.currentTimeMillis()}.jpg")
+                                        )
+                                        cameraImageUri.value = newUri
+                                        takePhotoLauncher.launch(newUri)
+                                    }
+                                    else -> {
+                                        // Ask for permission
+                                        cameraPermissionLauncher.launch(permission)
+                                    }
+                                }
+                            },
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.plus_icon),
+                            contentDescription = "Take a photo",
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.CenterHorizontally),
+                            tint = colors.FontColor
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Take a photo",
                             style = TextStyle(
                                 fontFamily = Nunito,
                                 fontWeight = FontWeight.Black,
@@ -2719,10 +2968,10 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
             ) {
                 Row(
                     modifier = Modifier
+                        .clip(RoundedCornerShape(24.dp))
                         .fillMaxWidth()
                         .background(color = colors.LightGray)
-                        .clip(RoundedCornerShape(16.dp))
-                        .padding(4.dp),
+                        .padding(2.dp),
                 ) {
                     Button(
                         onClick = { isPublic = true },
@@ -2732,13 +2981,14 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                         ),
                         modifier = Modifier
                             .weight(1f)
-                            .padding(vertical = 10.dp, horizontal = 8.dp), // Adjusted horizontal padding
-                        shape = RoundedCornerShape(16.dp)
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
                     ) {
-                        Image(
+                        Icon(
                             painter = painterResource(id = R.drawable.icon_public),
                             contentDescription = "Public Recipe",
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(26.dp),
+                            tint = colors.FontColor
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
@@ -2762,10 +3012,11 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                             .padding(vertical = 10.dp, horizontal = 8.dp), // Adjusted horizontal padding
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Image(
+                        Icon(
                             painter = painterResource(id = R.drawable.icon_private),
                             contentDescription = "Private Recipe",
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(26.dp),
+                            tint = colors.FontColor
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
@@ -2801,6 +3052,35 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                 Spacer(modifier = Modifier.height(6.dp))
             }
 
+            fun createAndSendRecipe(country: String?) {
+                val recipe = Recipe(
+                    recipeId = id,
+                    title = title,
+                    description = description,
+                    ingredients = ingredients,
+                    instructions = instructions,
+                    isPublic = isPublic,
+                    coverPhoto = coverPhotoUri ?: Uri.EMPTY,
+                    photos = imageUris,
+                    prepTime = details?.prepTime ?: 0f,
+                    difficulty = details?.difficulty.toString(),
+                    servings = details?.servings ?: 0,
+                    calories = details?.calories ?: 0,
+                    tags = tags.map { it.name },
+                    country = country
+                )
+
+                Log.d("Recipe", "Recipe: $recipe")
+
+                viewModel.createRecipe(recipe, context) { response, error ->
+                    if (error != null) {
+                        errorMessage = error
+                    } else {
+                        navController.popBackStack()
+                    }
+                }
+            }
+
             Button(
                 onClick = {
                     if (title == "") {
@@ -2820,27 +3100,55 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                         return@Button
                     }
 
-                    val recipe = Recipe(
-                        title = title,
-                        description = description,
-                        ingredients = ingredients,
-                        instructions = instructions,
-                        isPublic = isPublic,
-                        coverPhoto = coverPhotoUri ?: Uri.EMPTY,
-                        photos = imageUris,
-                        prepTime = details?.prepTime ?: 0f,
-                        difficulty = details?.difficulty.toString(),
-                        servings = details?.servings ?: 0,
-                        calories = details?.servings ?: 0,
-                        tags = tags.map { it.name }
-                    )
+                    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
-                    viewModel.createRecipe(recipe, context) { response, error ->
-                        if (error != null) {
-                            errorMessage = error
-                        } else {
-                            navController.popBackStack()
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                            if (location != null) {
+                                val geocoder = Geocoder(context, Locale.getDefault())
+                                val lat = location.latitude
+                                val lon = location.longitude
+
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    geocoder.getFromLocation(lat, lon, 1, object : Geocoder.GeocodeListener {
+                                        override fun onGeocode(addresses: MutableList<Address>) {
+                                            val country = addresses.firstOrNull()?.countryName
+                                            Log.d("Geocoder", "Country: $country")
+                                            createAndSendRecipe(country)
+                                        }
+
+                                        override fun onError(errorMessageGeocoder: String?) {
+                                            Log.e("Geocoder", "Geocoding error: $errorMessageGeocoder")
+                                            errorMessage = "Failed to detect country"
+                                        }
+                                    })
+                                } else {
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        try {
+                                            val addresses = geocoder.getFromLocation(lat, lon, 1)
+                                            val country = addresses?.firstOrNull()?.countryName
+
+                                            withContext(Dispatchers.Main) {
+                                                createAndSendRecipe(country)
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e("Geocoder", "Geocoding failed: ${e.message}")
+                                            withContext(Dispatchers.Main) {
+                                                errorMessage = "Failed to detect country"
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                errorMessage = "Unable to get your location"
+                            }
                         }
+                    } else {
+                        createAndSendRecipe(country)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -2852,7 +3160,7 @@ fun CreateScreen(navController: NavController, showModal: (ModalType) -> Unit, v
                 shape = RoundedCornerShape(50.dp)
             ) {
                 Text(
-                    text = "Create Recipe",
+                    text = if (id != null) "Save recipe" else "Create recipe",
                     style = TextStyle(
                         fontFamily = Nunito,
                         fontWeight = FontWeight.Black,
