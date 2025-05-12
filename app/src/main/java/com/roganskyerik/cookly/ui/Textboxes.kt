@@ -4,6 +4,8 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -37,7 +39,9 @@ fun CustomOutlinedTextField(
     focusedBorderColor: Color = LocalCooklyColors.current.DarkOrange,
     labelColor: Color = LocalCooklyColors.current.FontColor,
     isError: Boolean = false,
-    errorColor: Color = LocalCooklyColors.current.Error
+    errorColor: Color = LocalCooklyColors.current.Error,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -58,7 +62,9 @@ fun CustomOutlinedTextField(
             visualTransformation = visualTransformation,
             modifier = Modifier
                 .fillMaxWidth()
-                .onFocusChanged { isFocused = it.isFocused }
+                .onFocusChanged { isFocused = it.isFocused },
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions
         ) { innerTextField ->
             Box(
                 modifier = Modifier

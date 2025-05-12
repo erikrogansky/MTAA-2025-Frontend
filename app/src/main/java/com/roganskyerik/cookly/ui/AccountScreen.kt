@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -56,6 +57,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -790,6 +793,10 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                                     isError = errorMessage != null,
                                                     singleLine = true,
                                                     visualTransformation = PasswordVisualTransformation(),
+                                                    keyboardOptions = KeyboardOptions(
+                                                        keyboardType = KeyboardType.Password,
+                                                        imeAction = ImeAction.Done
+                                                    ),
                                                 )
 
                                                 Spacer(modifier = Modifier.height(16.dp))
@@ -810,7 +817,11 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                                 ),
                                                 isError = errorMessage != null,
                                                 singleLine = true,
-                                                visualTransformation = PasswordVisualTransformation()
+                                                visualTransformation = PasswordVisualTransformation(),
+                                                keyboardOptions = KeyboardOptions(
+                                                    keyboardType = KeyboardType.Password,
+                                                    imeAction = ImeAction.Done
+                                                ),
                                             )
 
                                             Spacer(modifier = Modifier.height(16.dp))
@@ -830,7 +841,11 @@ fun AccountScreen(navController: NavController, showModal: (ModalType) -> Unit, 
                                                 ),
                                                 isError = errorMessage != null,
                                                 singleLine = true,
-                                                visualTransformation = PasswordVisualTransformation()
+                                                visualTransformation = PasswordVisualTransformation(),
+                                                keyboardOptions = KeyboardOptions(
+                                                    keyboardType = KeyboardType.Password,
+                                                    imeAction = ImeAction.Done
+                                                ),
                                             )
 
                                             if (errorMessage != null) {
